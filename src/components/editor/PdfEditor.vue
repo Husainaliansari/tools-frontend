@@ -413,6 +413,16 @@
         >
           <BaseIcon :name="isFullscreen ? 'minimize' : 'maximize'" :size="15" />
         </button>
+        <button
+          type="button"
+          class="editor__download"
+          :disabled="busy"
+          title="Download PDF document (Ctrl+S)"
+          @click="onAction('export')"
+        >
+          <BaseIcon name="download" :size="15" />
+          <span>Download</span>
+        </button>
         <button type="button" class="editor__close" @click="emit('close')">
           <BaseIcon name="x" :size="15" /> Close
         </button>
@@ -623,6 +633,33 @@
   .editor__close:hover {
     background: hsl(var(--color-chip));
     color: hsl(var(--color-text));
+  }
+  .editor__download {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: hsl(var(--color-primary));
+    color: #ffffff;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s, opacity 0.15s;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    white-space: nowrap;
+  }
+  .editor__download:hover:not(:disabled) {
+    background: hsl(var(--color-primary) / 0.9);
+    filter: brightness(1.06);
+  }
+  .editor__download:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .editor__download:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
   .editor__body {
     flex: 1;

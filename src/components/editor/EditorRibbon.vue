@@ -1,8 +1,10 @@
 <script setup lang="ts">
   /**
-   * EditorRibbon — the Foxit-style tabbed toolbar (Home / Comment / Edit /
-   * Protect). Tab switches are local; tool buttons drive the editor's active
-   * tool; action buttons bubble up to the shell via `action`.
+   * EditorRibbon — the Foxit/Adobe-style tabbed toolbar.
+   * Features:
+   * - Responsive scrollable top tab bar
+   * - Expand/Collapse toolbar toggle button with session persistence
+   * - Clean group wrapping and icon tooltips
    */
   import { ref } from 'vue'
   import BaseIcon from '@components/icons/BaseIcon.vue'
@@ -12,6 +14,22 @@
   const emit = defineEmits<{ action: [EditorAction] }>()
   const editor = useEditor()
   const activeTab = ref('home')
+
+  // Restore session preference for ribbon collapse state
+  const isCollapsed = ref(sessionStorage.getItem('pdf_editor_ribbon_collapsed') === 'true')
+
+  function toggleCollapse(): void {
+    isCollapsed.value = !isCollapsed.value
+    sessionStorage.setItem('pdf_editor_ribbon_collapsed', String(isCollapsed.value))
+  }
+
+  function selectTab(id: string): void {
+    activeTab.value = id
+    if (isCollapsed.value) {
+      isCollapsed.value = false
+      sessionStorage.setItem('pdf_editor_ribbon_collapsed', 'false')
+    }
+  }
 
   function onItem(item: RibbonItem): void {
     if (item.soon) return
@@ -24,6 +42,7 @@
     if (item.mode) return editor.editMode.value === item.mode
     return !!item.tool && editor.activeTool.value === item.tool
   }
+
   function isDisabled(item: RibbonItem): boolean {
     if (item.soon) return true
     const a = item.action
@@ -50,26 +69,44 @@
 </script>
 
 <template>
-  <div class="ribbon">
-    <!-- Tabs -->
-    <div class="ribbon__tabs" role="tablist">
+  <div class="ribbon" :class="{ 'ribbon--collapsed': isCollapsed }">
+    <!-- Header with scrollable tabs bar and collapse toggle -->
+    <div class="ribbon__header">
+      <div class="ribbon__tabs" role="tablist">
+        <button
+          v-for="tab in RIBBON"
+          :key="tab.id"
+          type="button"
+          role="tab"
+          class="ribbon__tab"
+          :class="{ 'ribbon__tab--active': tab.id === activeTab }"
+          :aria-selected="tab.id === activeTab"
+          @click="selectTab(tab.id)"
+        >
+          <BaseIcon :name="tab.icon" :size="15" />
+          <span>{{ tab.label }}</span>
+        </button>
+      </div>
+
       <button
-        v-for="tab in RIBBON"
-        :key="tab.id"
         type="button"
-        role="tab"
-        class="ribbon__tab"
-        :class="{ 'ribbon__tab--active': tab.id === activeTab }"
-        :aria-selected="tab.id === activeTab"
-        @click="activeTab = tab.id"
+        class="ribbon__toggle"
+        :title="isCollapsed ? 'Expand toolbar ribbon' : 'Collapse toolbar ribbon'"
+        :aria-expanded="!isCollapsed"
+        @click="toggleCollapse"
       >
-        <BaseIcon :name="tab.icon" :size="15" />
-        {{ tab.label }}
+        <BaseIcon :name="isCollapsed ? 'chevron-down' : 'chevron-up'" :size="15" />
+        <span class="ribbon__toggle-label">{{ isCollapsed ? 'Expand' : 'Collapse' }}</span>
       </button>
     </div>
 
     <!-- Active tab's groups -->
-    <div v-for="tab in RIBBON" v-show="tab.id === activeTab" :key="tab.id" class="ribbon__groups">
+    <div
+      v-for="tab in RIBBON"
+      v-show="tab.id === activeTab && !isCollapsed"
+      :key="tab.id"
+      class="ribbon__groups"
+    >
       <div v-for="group in tab.groups" :key="group.label" class="ribbon__group">
         <div class="ribbon__items">
           <button
@@ -97,11 +134,32 @@
     background: hsl(var(--color-surface));
     border-bottom: 1px solid hsl(var(--color-border));
     flex: none;
+    transition: all 0.2s ease;
+  }
+  .ribbon__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 6px 0;
+    border-bottom: 1px solid hsl(var(--color-border));
+    background: hsl(var(--color-surface));
+    overflow: hidden;
+  }
+  .ribbon--collapsed .ribbon__header {
+    border-bottom: none;
   }
   .ribbon__tabs {
     display: flex;
     gap: 2px;
-    padding: 6px 10px 0;
+    overflow-x: auto;
+    flex: 1;
+    min-width: 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ribbon__tabs::-webkit-scrollbar {
+    display: none;
   }
   .ribbon__tab {
     display: inline-flex;
@@ -115,6 +173,8 @@
     font-size: 13.5px;
     font-weight: 600;
     cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
     transition:
       background 0.15s,
       color 0.15s;
@@ -126,12 +186,40 @@
   .ribbon__tab--active {
     color: hsl(var(--color-primary));
     background: hsl(var(--color-primary) / 0.1);
+    box-shadow: inset 0 -2px 0 hsl(var(--color-primary));
+  }
+  .ribbon__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 2px 4px 4px 8px;
+    padding: 6px 10px;
+    border: 1px solid hsl(var(--color-border));
+    border-radius: var(--radius-md);
+    background: hsl(var(--color-surface));
+    color: hsl(var(--color-text-muted));
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition:
+      background 0.15s,
+      color 0.15s,
+      border-color 0.15s;
+  }
+  .ribbon__toggle:hover {
+    background: hsl(var(--color-chip));
+    color: hsl(var(--color-text));
+    border-color: hsl(var(--color-primary) / 0.4);
   }
   .ribbon__groups {
     display: flex;
     gap: 4px;
     padding: 10px 12px;
     overflow-x: auto;
+    background: hsl(var(--color-surface));
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
   }
   .ribbon__group {
     display: flex;
@@ -139,6 +227,7 @@
     gap: 5px;
     padding: 0 12px;
     border-right: 1px solid hsl(var(--color-border));
+    flex-shrink: 0;
   }
   .ribbon__group:last-child {
     border-right: none;
@@ -164,6 +253,7 @@
     font-size: 11.5px;
     font-weight: 600;
     cursor: pointer;
+    white-space: nowrap;
     transition:
       background 0.15s,
       color 0.15s,
@@ -198,12 +288,19 @@
   }
 
   @media (max-width: 760px) {
-    .ribbon__label,
-    .ribbon__group-label {
+    .ribbon__toggle-label {
       display: none;
     }
+    .ribbon__tab {
+      padding: 7px 12px;
+      font-size: 12.5px;
+    }
+    .ribbon__group-label {
+      font-size: 9.5px;
+    }
     .ribbon__btn {
-      min-width: 40px;
+      min-width: 44px;
+      padding: 5px 6px;
     }
   }
 </style>

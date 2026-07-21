@@ -102,10 +102,7 @@ export const RIBBON: RibbonTab[] = [
       },
       {
         label: 'Document',
-        items: [
-          { id: 'export', label: 'Download', icon: 'download', action: 'export' },
-          { id: 'print', label: 'Print', icon: 'printer', action: 'print' },
-        ],
+        items: [{ id: 'print', label: 'Print', icon: 'printer', action: 'print' }],
       },
     ],
   },
