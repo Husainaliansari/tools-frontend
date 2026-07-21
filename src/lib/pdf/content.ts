@@ -32,6 +32,9 @@ export interface DetectedText extends Box {
   lineHeight?: number
   letterSpacing?: number
   paragraphSpacing?: number
+  /** Font ascent/descent as fractions of the em (from pdf.js), for baseline reconstruction on export. */
+  fontAscent?: number
+  fontDescent?: number
   color?: string
   locked?: boolean
 }
@@ -286,6 +289,8 @@ function groupLinesIntoBlocks(lines: DetectedText[], pageNumber: number): Detect
       align: first.align || 'left',
       bold: first.bold,
       italic: first.italic,
+      fontAscent: first.fontAscent,
+      fontDescent: first.fontDescent,
       lineHeight: calculatedLineHeight,
       letterSpacing: first.letterSpacing || 0,
     }
@@ -351,6 +356,8 @@ async function extractText(page: PDFPageProxy, pageHeight: number): Promise<Dete
         align,
         bold: fontInfo.bold,
         italic: fontInfo.italic,
+        fontAscent: line.ascent,
+        fontDescent: line.descent,
       })
     }
     line = null
@@ -563,6 +570,18 @@ export async function detectContent(
   let text: DetectedText[] = []
   let drawn: { images: DetectedImage[]; graphics: DetectedGraphic[] } = { images: [], graphics: [] }
   if (kinds.text) {
+    // Font metadata (real PostScript name, weight, embedded-ness) is only
+    // published to `commonObjs` once the page's operator list has been built.
+    // Text extraction reads those to identify the font, and the exporter relies
+    // on the resolved name to reuse the *original embedded* font. Without this,
+    // fonts resolve to opaque loaded-names ("g_d0_f1") and every edit falls
+    // back to a mismatched standard font. Forcing the operator list makes
+    // detection independent of whether the page has painted yet.
+    try {
+      await page.getOperatorList()
+    } catch {
+      // Non-fatal: extraction still runs, just with weaker font hints.
+    }
     try {
       text = await extractText(page, pageHeight)
     } catch {

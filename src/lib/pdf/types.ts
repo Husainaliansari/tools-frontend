@@ -269,6 +269,9 @@ export interface TextContentEdit extends ContentEditBase {
   lineHeight?: number
   letterSpacing?: number
   paragraphSpacing?: number
+  /** Font ascent/descent as fractions of the em (from detection), for baseline reconstruction on export. */
+  fontAscent?: number
+  fontDescent?: number
 }
 
 /** A lifted bitmap region — a detected image or any marquee'd area. */

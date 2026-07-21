@@ -22,8 +22,10 @@ import {
   type PDFFont,
   type PDFPage,
 } from 'pdf-lib'
+import fontkit from '@pdf-lib/fontkit'
 import type { Annotation, Box, ContentEdit, FieldAnnotation, TextContentEdit } from './types'
 import { hexToRgb } from './color'
+import { ContentFontProvider } from './fonts'
 
 export interface DocumentMetadata {
   title?: string
@@ -220,7 +222,9 @@ function drawTextBox(
   color: ReturnType<typeof rgb>,
   align: 'left' | 'center' | 'right' | 'justify',
   lineFactor: number,
-  opacity: number = 1,
+  opacity = 1,
+  /** Baseline offset from the box top, as a fraction of the font size. */
+  baselineFrac = 0.82,
 ): void {
   const lineHeight = fontSize * lineFactor
   const lines = wrapText(text, font, fontSize, Math.max(b.w, fontSize))
@@ -229,7 +233,7 @@ function drawTextBox(
     let vx = b.x
     if (align === 'center') vx += (b.w - width) / 2
     else if (align === 'right') vx += b.w - width
-    const origin = m.point(vx, b.y + fontSize * 0.82 + i * lineHeight)
+    const origin = m.point(vx, b.y + fontSize * baselineFrac + i * lineHeight)
     page.drawText(line, {
       x: origin.x,
       y: origin.y,
@@ -527,13 +531,71 @@ function applyFormFields(pdf: PDFDocument, pages: PDFPage[], fields: FieldAnnota
 
 // ─── Content edits (editing existing PDF objects) ─────────────────────────────
 
+/** Classify a detected/edited font by shape + weight/style (shared logic). */
+function classifyFont(edit: TextContentEdit): { mono: boolean; serif: boolean; bold: boolean; italic: boolean } {
+  const f = `${edit.fontFamily || ''} ${edit.originalFontName || ''}`.toLowerCase()
+  return {
+    mono: /mono|courier|consol|menlo|code|fixed/.test(f),
+    serif: /times|serif|georgia|roman|garamond|minion|book|cambria|palatino|baskerville|century/.test(f),
+    bold: !!edit.bold || /bold|black|heavy|semibold|-bd|_bd|\bbd\b|w[6-9]|700|800|900/i.test(f),
+    italic: !!edit.italic || /italic|oblique|-it|_it|\bit\b|italicmt|bi\b|bdit/i.test(f),
+  }
+}
+
+/**
+ * A standard font substituted for an embedded one rarely shares its glyph
+ * proportions — Helvetica-Bold, say, sits visibly larger than Calibri-Bold at
+ * the same point size, so edited text looks bigger than the untouched text
+ * around it. Since export runs in the browser and pdf.js has already loaded the
+ * embedded font, we measure the true ink height of the original font vs. the
+ * substitute for the same characters and scale the export size so the
+ * substitute occupies the *same* visual height. Falls back to 1 (no change).
+ */
+let _measureCtx: CanvasRenderingContext2D | null | undefined
+function measureCtx(): CanvasRenderingContext2D | null {
+  if (_measureCtx !== undefined) return _measureCtx
+  try {
+    _measureCtx = (typeof document !== 'undefined' ? document.createElement('canvas') : null)?.getContext('2d') ?? null
+  } catch {
+    _measureCtx = null
+  }
+  return _measureCtx
+}
+function inkHeight(ctx: CanvasRenderingContext2D, fontStr: string, text: string): number {
+  ctx.font = fontStr
+  const m = ctx.measureText(text)
+  const asc = (m as TextMetrics).actualBoundingBoxAscent
+  const desc = (m as TextMetrics).actualBoundingBoxDescent
+  return typeof asc === 'number' && typeof desc === 'number' ? asc + desc : NaN
+}
+function visualSizeCorrection(edit: TextContentEdit): number {
+  const ctx = measureCtx()
+  if (!ctx) return 1
+  const { mono, serif, bold, italic } = classifyFont(edit)
+  const sample = (edit.text.split('\n').find((s) => s.trim()) || 'Hg').slice(0, 48)
+  const style = italic ? 'italic ' : ''
+  const weight = bold ? '700 ' : '400 '
+  const fallback = serif ? 'Times New Roman, serif' : mono ? 'Courier New, monospace' : 'Helvetica, Arial, sans-serif'
+  const origFamilies = [edit.loadedFontFamily, edit.fontFamily, edit.originalFontName]
+    .filter(Boolean)
+    .map((f) => `"${f}"`)
+    .join(', ')
+  const origFont = `${style}${weight}100px ${origFamilies ? origFamilies + ', ' : ''}${fallback}`
+  const subFamily = mono ? '"Courier New", monospace' : serif ? '"Times New Roman", Times, serif' : 'Helvetica, Arial, sans-serif'
+  const subFont = `${style}${weight}100px ${subFamily}`
+  try {
+    const hOrig = inkHeight(ctx, origFont, sample)
+    const hSub = inkHeight(ctx, subFont, sample)
+    if (hOrig > 0 && hSub > 0) return Math.min(1.2, Math.max(0.82, hOrig / hSub))
+  } catch {
+    /* measurement unsupported — no correction */
+  }
+  return 1
+}
+
 /** Map a detected/edited family + weight to the closest standard font. */
 function pickStandardFont(edit: TextContentEdit): StandardFonts {
-  const f = `${edit.fontFamily || ''} ${edit.originalFontName || ''}`.toLowerCase()
-  const mono = /mono|courier|consol|menlo|code|fixed/.test(f)
-  const serif = /times|serif|georgia|roman|garamond|minion|book|cambria|palatino|baskerville|century/.test(f)
-  const bold = edit.bold || /bold|black|heavy|semibold|-bd|_bd|\bbd\b|w[6-9]|700|800|900/i.test(f)
-  const italic = edit.italic || /italic|oblique|-it|_it|\bit\b|italicmt|bi\b|bdit/i.test(f)
+  const { mono, serif, bold, italic } = classifyFont(edit)
   if (mono) {
     if (bold && italic) return StandardFonts.CourierBoldOblique
     if (bold) return StandardFonts.CourierBold
@@ -560,6 +622,7 @@ async function applyContentEdit(
   pdf: PDFDocument,
   page: PDFPage,
   fontFor: (font: StandardFonts) => Promise<PDFFont>,
+  fontProvider: ContentFontProvider,
   edit: ContentEdit,
 ): Promise<void> {
   const m = mapperFor(page)
@@ -572,18 +635,46 @@ async function applyContentEdit(
     return
   }
 
+  // Preferred path: redraw with the document's *own* embedded font so the edit
+  // is visually indistinguishable from the surrounding untouched text — same
+  // glyph shapes, weight, spacing and kerning. Because it's the exact original
+  // font, the point size is used verbatim (no visual-size fudge) and the
+  // baseline is reconstructed from the detected ascent.
+  const embedded = await fontProvider.fontFor(edit)
+  if (embedded) {
+    drawTextBox(
+      page,
+      embedded.font,
+      m,
+      edit,
+      edit.text,
+      edit.fontSize,
+      hexToRgb(edit.color),
+      edit.align,
+      edit.lineHeight || 1.25,
+      edit.opacity ?? 1,
+      edit.fontAscent ?? embedded.ascentFrac ?? 0.82,
+    )
+    return
+  }
+
+  // Fallback: no usable embedded font (missing program, or it can't encode a
+  // newly-typed glyph). Substitute the closest standard font and scale it so
+  // its glyphs occupy the original's visual height.
   const font = await fontFor(pickStandardFont(edit))
+  const size = edit.fontSize * visualSizeCorrection(edit)
   drawTextBox(
     page,
     font,
     m,
     edit,
     edit.text,
-    edit.fontSize,
+    size,
     hexToRgb(edit.color),
     edit.align,
     edit.lineHeight || 1.25,
     edit.opacity ?? 1,
+    edit.fontAscent ?? 0.82,
   )
 }
 
@@ -606,6 +697,9 @@ export async function exportPdf(
   options: ExportOptions = {},
 ): Promise<Uint8Array> {
   const pdf = await PDFDocument.load(source, { ignoreEncryption: true })
+  // fontkit lets us re-embed the document's own (custom/embedded) fonts so
+  // edited text keeps the original typeface — see ContentFontProvider.
+  pdf.registerFontkit(fontkit)
   const pages = pdf.getPages()
 
   const fontCache = new Map<StandardFonts, PDFFont>()
@@ -616,6 +710,7 @@ export async function exportPdf(
     fontCache.set(name, embedded)
     return embedded
   }
+  const fontProvider = new ContentFontProvider(pdf)
 
   if (options.metadata) applyMetadata(pdf, options.metadata)
 
@@ -623,7 +718,7 @@ export async function exportPdf(
   for (const edit of contentEdits) {
     const page = pages[edit.page - 1]
     if (!page) continue
-    await applyContentEdit(pdf, page, fontFor, edit)
+    await applyContentEdit(pdf, page, fontFor, fontProvider, edit)
   }
 
   for (const annotation of annotations) {

@@ -824,6 +824,8 @@ export function createEditor() {
             align: det.align || 'left',
             bold: det.bold,
             italic: det.italic,
+            fontAscent: det.fontAscent,
+            fontDescent: det.fontDescent,
             lineHeight: det.lineHeight || 1.25,
             letterSpacing: det.letterSpacing || 0,
             opacity: 1,
