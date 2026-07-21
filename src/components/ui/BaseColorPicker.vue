@@ -7,78 +7,134 @@
    * @example
    * <BaseColorPicker v-model="color" v-model:opacity="opacity" label="Text color" :show-opacity="true" />
    */
-  import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-  import BaseIcon from '@components/icons/BaseIcon.vue'
-  import NumberStepper from './NumberStepper.vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import BaseIcon from '@components/icons/BaseIcon.vue'
+import NumberStepper from './NumberStepper.vue'
 
-  const props = withDefaults(
-    defineProps<{
-      modelValue: string
-      opacity?: number
-      label?: string
-      showOpacity?: boolean
-      presets?: readonly string[]
-    }>(),
-    {
-      opacity: 1,
-      label: 'Color',
-      showOpacity: false,
-      presets: () => [
-        '#000000', '#1f2937', '#4b5563', '#9ca3af', '#e5e7eb', '#ffffff',
-        '#dc2626', '#ea580c', '#f59e0b', '#16a34a', '#0d9488', '#2563eb',
-        '#4f46e5', '#7c3aed', '#c026d3', '#db2777',
-      ],
-    },
-  )
+const props = withDefaults(
+  defineProps<{
+    modelValue: string
+    opacity?: number
+    label?: string
+    showOpacity?: boolean
+    presets?: readonly string[]
+  }>(),
+  {
+    opacity: 1,
+    label: 'Color',
+    showOpacity: false,
+    presets: () => [
+      '#000000', '#1f2937', '#4b5563', '#9ca3af', '#e5e7eb', '#ffffff',
+      '#dc2626', '#ea580c', '#f59e0b', '#16a34a', '#0d9488', '#2563eb',
+      '#4f46e5', '#7c3aed', '#c026d3', '#db2777',
+    ],
+  },
+)
 
-  const emit = defineEmits<{
-    'update:modelValue': [value: string]
-    'update:opacity': [value: number]
-  }>()
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+  'update:opacity': [value: number]
+}>()
 
-  const isOpen = ref(false)
-  const rootEl = ref<HTMLDivElement | null>(null)
-  const colorMode = ref<'hex' | 'rgb' | 'hsl'>('hex')
+const isOpen = ref(false)
+const rootEl = ref<HTMLDivElement | null>(null)
+const popoverEl = ref<HTMLDivElement | null>(null)
+const colorMode = ref<'hex' | 'rgb' | 'hsl'>('hex')
+const popoverStyle = ref<{ top: string; left: string }>({ top: '0px', left: '0px' })
 
-  // Recent colors stored in localStorage
-  const RECENT_KEY = 'pdf_editor_recent_colors'
-  const recentColors = ref<string[]>([])
+// Recent colors stored in localStorage
+const RECENT_KEY = 'pdf_editor_recent_colors'
+const recentColors = ref<string[]>([])
 
-  function loadRecentColors(): void {
-    try {
-      const stored = localStorage.getItem(RECENT_KEY)
-      if (stored) recentColors.value = JSON.parse(stored)
-    } catch {
-      recentColors.value = ['#1f2937', '#dc2626', '#2563eb', '#16a34a', '#7c3aed']
-    }
+function loadRecentColors(): void {
+  try {
+    const stored = localStorage.getItem(RECENT_KEY)
+    if (stored) recentColors.value = JSON.parse(stored)
+  } catch {
+    recentColors.value = ['#1f2937', '#dc2626', '#2563eb', '#16a34a', '#7c3aed']
+  }
+}
+
+function addRecentColor(color: string): void {
+  const norm = color.toLowerCase()
+  const list = recentColors.value.filter((c) => c.toLowerCase() !== norm)
+  list.unshift(norm)
+  recentColors.value = list.slice(0, 10)
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(recentColors.value))
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function updatePosition(): void {
+  if (!rootEl.value) return
+  const rect = rootEl.value.getBoundingClientRect()
+  const popoverWidth = 260
+  let top = rect.bottom + 6
+  let left = rect.left
+
+  if (left + popoverWidth > window.innerWidth - 12) {
+    left = Math.max(12, window.innerWidth - popoverWidth - 12)
   }
 
-  function addRecentColor(color: string): void {
-    const norm = color.toLowerCase()
-    const list = recentColors.value.filter((c) => c.toLowerCase() !== norm)
-    list.unshift(norm)
-    recentColors.value = list.slice(0, 10)
-    try {
-      localStorage.setItem(RECENT_KEY, JSON.stringify(recentColors.value))
-    } catch {
-      // ignore storage errors
-    }
+  const popoverHeight = popoverEl.value?.offsetHeight || 340
+  if (top + popoverHeight > window.innerHeight - 12 && rect.top - popoverHeight > 12) {
+    top = rect.top - popoverHeight - 6
   }
 
-  onMounted(() => {
-    loadRecentColors()
-    document.addEventListener('pointerdown', handleClickOutside)
-  })
-
-  onBeforeUnmount(() => {
-    document.removeEventListener('pointerdown', handleClickOutside)
-  })
-
-  function handleClickOutside(event: MouseEvent): void {
-    if (isOpen.value && rootEl.value && !rootEl.value.contains(event.target as Node)) {
-      isOpen.value = false
-    }
+  popoverStyle.value = {
+    top: `${Math.round(top)}px`,
+    left: `${Math.round(left)}px`,
   }
+}
+
+function toggleOpen(): void {
+  isOpen.value = !isOpen.value
+  if (isOpen.value) {
+    nextTick(() => {
+      updatePosition()
+    })
+  }
+}
+
+function handleClickOutside(event: PointerEvent | MouseEvent): void {
+  if (!isOpen.value) return
+  const target = event.target as Node
+  if (
+    rootEl.value && !rootEl.value.contains(target) &&
+    popoverEl.value && !popoverEl.value.contains(target)
+  ) {
+    isOpen.value = false
+  }
+}
+
+function handleScrollOrResize(): void {
+  if (isOpen.value) {
+    updatePosition()
+  }
+}
+
+watch(isOpen, (newVal) => {
+  if (newVal) {
+    nextTick(() => {
+      updatePosition()
+    })
+  }
+})
+
+onMounted(() => {
+  loadRecentColors()
+  document.addEventListener('pointerdown', handleClickOutside, true)
+  window.addEventListener('scroll', handleScrollOrResize, true)
+  window.addEventListener('resize', handleScrollOrResize)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', handleClickOutside, true)
+  window.removeEventListener('scroll', handleScrollOrResize, true)
+  window.removeEventListener('resize', handleScrollOrResize)
+})
 
   // ─── Color Parsing & Conversion ──────────────────────────────────────────
   function parseToRgb(color: string): { r: number; g: number; b: number } {
@@ -221,7 +277,7 @@
       class="pf-color-picker__trigger"
       :aria-label="label"
       :title="`${label}: ${normalizedHex}`"
-      @click="isOpen = !isOpen"
+      @click="toggleOpen"
     >
       <span
         class="pf-color-picker__swatch"
@@ -233,184 +289,193 @@
     </button>
 
     <!-- Popover Dropdown Panel -->
-    <div v-if="isOpen" class="pf-color-picker__popover" role="dialog" :aria-label="label">
-      <!-- Swatch Palette Grid -->
-      <div class="pf-color-picker__section">
-        <span class="pf-color-picker__sec-title">Palette Swatches</span>
-        <div class="pf-color-picker__grid">
-          <button
-            v-for="preset in presets"
-            :key="preset"
-            type="button"
-            class="pf-color-picker__grid-swatch"
-            :class="{ 'pf-color-picker__grid-swatch--active': preset.toLowerCase() === normalizedHex }"
-            :style="{ background: preset }"
-            :aria-label="`Select color ${preset}`"
-            @click="selectColor(preset)"
-          />
-        </div>
-      </div>
-
-      <!-- Recent Colors -->
-      <div v-if="recentColors.length" class="pf-color-picker__section">
-        <span class="pf-color-picker__sec-title">Recent Colors</span>
-        <div class="pf-color-picker__recent">
-          <button
-            v-for="rColor in recentColors"
-            :key="`recent-${rColor}`"
-            type="button"
-            class="pf-color-picker__grid-swatch pf-color-picker__grid-swatch--sm"
-            :class="{ 'pf-color-picker__grid-swatch--active': rColor.toLowerCase() === normalizedHex }"
-            :style="{ background: rColor }"
-            :aria-label="`Select recent color ${rColor}`"
-            @click="selectColor(rColor)"
-          />
-        </div>
-      </div>
-
-      <!-- Mode Switcher Tabs & Numeric Inputs -->
-      <div class="pf-color-picker__section">
-        <div class="pf-color-picker__mode-tabs">
-          <button
-            type="button"
-            class="pf-color-picker__mode-btn"
-            :class="{ 'pf-color-picker__mode-btn--on': colorMode === 'hex' }"
-            @click="colorMode = 'hex'"
-          >
-            HEX
-          </button>
-          <button
-            type="button"
-            class="pf-color-picker__mode-btn"
-            :class="{ 'pf-color-picker__mode-btn--on': colorMode === 'rgb' }"
-            @click="colorMode = 'rgb'"
-          >
-            RGB
-          </button>
-          <button
-            type="button"
-            class="pf-color-picker__mode-btn"
-            :class="{ 'pf-color-picker__mode-btn--on': colorMode === 'hsl' }"
-            @click="colorMode = 'hsl'"
-          >
-            HSL
-          </button>
-        </div>
-
-        <div class="pf-color-picker__inputs">
-          <!-- HEX Mode -->
-          <div v-if="colorMode === 'hex'" class="pf-color-picker__hex-row">
-            <span class="pf-color-picker__lbl">HEX</span>
-            <input
-              type="text"
-              class="pf-color-picker__hex-input"
-              :value="normalizedHex"
-              @change="onHexInput"
-              @keyup.enter="onHexInput"
+    <Teleport to="body">
+      <div
+        v-if="isOpen"
+        ref="popoverEl"
+        class="pf-color-picker__popover"
+        :style="popoverStyle"
+        role="dialog"
+        :aria-label="label"
+      >
+        <!-- Swatch Palette Grid -->
+        <div class="pf-color-picker__section">
+          <span class="pf-color-picker__sec-title">Palette Swatches</span>
+          <div class="pf-color-picker__grid">
+            <button
+              v-for="preset in presets"
+              :key="preset"
+              type="button"
+              class="pf-color-picker__grid-swatch"
+              :class="{ 'pf-color-picker__grid-swatch--active': preset.toLowerCase() === normalizedHex }"
+              :style="{ background: preset }"
+              :aria-label="`Select color ${preset}`"
+              @click="selectColor(preset)"
             />
-            <label class="pf-color-picker__wheel-btn" title="Custom Color Spectrum">
-              <span class="pf-color-picker__wheel-icon" />
+          </div>
+        </div>
+
+        <!-- Recent Colors -->
+        <div v-if="recentColors.length" class="pf-color-picker__section">
+          <span class="pf-color-picker__sec-title">Recent Colors</span>
+          <div class="pf-color-picker__recent">
+            <button
+              v-for="rColor in recentColors"
+              :key="`recent-${rColor}`"
+              type="button"
+              class="pf-color-picker__grid-swatch pf-color-picker__grid-swatch--sm"
+              :class="{ 'pf-color-picker__grid-swatch--active': rColor.toLowerCase() === normalizedHex }"
+              :style="{ background: rColor }"
+              :aria-label="`Select recent color ${rColor}`"
+              @click="selectColor(rColor)"
+            />
+          </div>
+        </div>
+
+        <!-- Mode Switcher Tabs & Numeric Inputs -->
+        <div class="pf-color-picker__section">
+          <div class="pf-color-picker__mode-tabs">
+            <button
+              type="button"
+              class="pf-color-picker__mode-btn"
+              :class="{ 'pf-color-picker__mode-btn--on': colorMode === 'hex' }"
+              @click="colorMode = 'hex'"
+            >
+              HEX
+            </button>
+            <button
+              type="button"
+              class="pf-color-picker__mode-btn"
+              :class="{ 'pf-color-picker__mode-btn--on': colorMode === 'rgb' }"
+              @click="colorMode = 'rgb'"
+            >
+              RGB
+            </button>
+            <button
+              type="button"
+              class="pf-color-picker__mode-btn"
+              :class="{ 'pf-color-picker__mode-btn--on': colorMode === 'hsl' }"
+              @click="colorMode = 'hsl'"
+            >
+              HSL
+            </button>
+          </div>
+
+          <div class="pf-color-picker__inputs">
+            <!-- HEX Mode -->
+            <div v-if="colorMode === 'hex'" class="pf-color-picker__hex-row">
+              <span class="pf-color-picker__lbl">HEX</span>
               <input
-                type="color"
-                class="pf-color-picker__native-input"
+                type="text"
+                class="pf-color-picker__hex-input"
                 :value="normalizedHex"
-                @input="onNativeColorInput"
+                @change="onHexInput"
+                @keyup.enter="onHexInput"
               />
-            </label>
-          </div>
+              <label class="pf-color-picker__wheel-btn" title="Custom Color Spectrum">
+                <span class="pf-color-picker__wheel-icon" />
+                <input
+                  type="color"
+                  class="pf-color-picker__native-input"
+                  :value="normalizedHex"
+                  @input="onNativeColorInput"
+                />
+              </label>
+            </div>
 
-          <!-- RGB Mode -->
-          <div v-else-if="colorMode === 'rgb'" class="pf-color-picker__row">
-            <div class="pf-color-picker__field">
-              <span class="pf-color-picker__field-lbl">R</span>
-              <NumberStepper
-                :model-value="currentRgb.r"
-                :min="0"
-                :max="255"
-                :step="1"
-                compact
-                @update:model-value="onRgbInput('r', $event)"
-              />
+            <!-- RGB Mode -->
+            <div v-else-if="colorMode === 'rgb'" class="pf-color-picker__row">
+              <div class="pf-color-picker__field">
+                <span class="pf-color-picker__field-lbl">R</span>
+                <NumberStepper
+                  :model-value="currentRgb.r"
+                  :min="0"
+                  :max="255"
+                  :step="1"
+                  compact
+                  @update:model-value="onRgbInput('r', $event)"
+                />
+              </div>
+              <div class="pf-color-picker__field">
+                <span class="pf-color-picker__field-lbl">G</span>
+                <NumberStepper
+                  :model-value="currentRgb.g"
+                  :min="0"
+                  :max="255"
+                  :step="1"
+                  compact
+                  @update:model-value="onRgbInput('g', $event)"
+                />
+              </div>
+              <div class="pf-color-picker__field">
+                <span class="pf-color-picker__field-lbl">B</span>
+                <NumberStepper
+                  :model-value="currentRgb.b"
+                  :min="0"
+                  :max="255"
+                  :step="1"
+                  compact
+                  @update:model-value="onRgbInput('b', $event)"
+                />
+              </div>
             </div>
-            <div class="pf-color-picker__field">
-              <span class="pf-color-picker__field-lbl">G</span>
-              <NumberStepper
-                :model-value="currentRgb.g"
-                :min="0"
-                :max="255"
-                :step="1"
-                compact
-                @update:model-value="onRgbInput('g', $event)"
-              />
-            </div>
-            <div class="pf-color-picker__field">
-              <span class="pf-color-picker__field-lbl">B</span>
-              <NumberStepper
-                :model-value="currentRgb.b"
-                :min="0"
-                :max="255"
-                :step="1"
-                compact
-                @update:model-value="onRgbInput('b', $event)"
-              />
-            </div>
-          </div>
 
-          <!-- HSL Mode -->
-          <div v-else-if="colorMode === 'hsl'" class="pf-color-picker__row">
-            <div class="pf-color-picker__field">
-              <span class="pf-color-picker__field-lbl">H</span>
-              <NumberStepper
-                :model-value="currentHsl.h"
-                :min="0"
-                :max="360"
-                :step="1"
-                compact
-                @update:model-value="onHslInput('h', $event)"
-              />
-            </div>
-            <div class="pf-color-picker__field">
-              <span class="pf-color-picker__field-lbl">S%</span>
-              <NumberStepper
-                :model-value="currentHsl.s"
-                :min="0"
-                :max="100"
-                :step="1"
-                compact
-                @update:model-value="onHslInput('s', $event)"
-              />
-            </div>
-            <div class="pf-color-picker__field">
-              <span class="pf-color-picker__field-lbl">L%</span>
-              <NumberStepper
-                :model-value="currentHsl.l"
-                :min="0"
-                :max="100"
-                :step="1"
-                compact
-                @update:model-value="onHslInput('l', $event)"
-              />
+            <!-- HSL Mode -->
+            <div v-else-if="colorMode === 'hsl'" class="pf-color-picker__row">
+              <div class="pf-color-picker__field">
+                <span class="pf-color-picker__field-lbl">H</span>
+                <NumberStepper
+                  :model-value="currentHsl.h"
+                  :min="0"
+                  :max="360"
+                  :step="1"
+                  compact
+                  @update:model-value="onHslInput('h', $event)"
+                />
+              </div>
+              <div class="pf-color-picker__field">
+                <span class="pf-color-picker__field-lbl">S%</span>
+                <NumberStepper
+                  :model-value="currentHsl.s"
+                  :min="0"
+                  :max="100"
+                  :step="1"
+                  compact
+                  @update:model-value="onHslInput('s', $event)"
+                />
+              </div>
+              <div class="pf-color-picker__field">
+                <span class="pf-color-picker__field-lbl">L%</span>
+                <NumberStepper
+                  :model-value="currentHsl.l"
+                  :min="0"
+                  :max="100"
+                  :step="1"
+                  compact
+                  @update:model-value="onHslInput('l', $event)"
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Opacity Slider -->
-      <div v-if="showOpacity" class="pf-color-picker__section pf-color-picker__sec--border">
-        <div class="pf-color-picker__op-head">
-          <span class="pf-color-picker__sec-title">Opacity</span>
-          <NumberStepper
-            v-model="opacityPct"
-            :min="0"
-            :max="100"
-            :step="5"
-            unit="%"
-            compact
-            label="Opacity"
-          />
+        <!-- Opacity Slider -->
+        <div v-if="showOpacity" class="pf-color-picker__section pf-color-picker__sec--border">
+          <div class="pf-color-picker__op-head">
+            <span class="pf-color-picker__sec-title">Opacity</span>
+            <NumberStepper
+              v-model="opacityPct"
+              :min="0"
+              :max="100"
+              :step="5"
+              unit="%"
+              compact
+              label="Opacity"
+            />
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
@@ -471,10 +536,8 @@
 
   /* Popover */
   .pf-color-picker__popover {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    z-index: 100;
+    position: fixed;
+    z-index: 9999;
     width: 260px;
     padding: 12px;
     background: hsl(var(--color-surface));
