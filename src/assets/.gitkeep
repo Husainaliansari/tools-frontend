@@ -1,0 +1,5 @@
+# assets/
+# Place static assets here:
+#   images/  – Logo, illustrations, background images
+#   fonts/   – Self-hosted web fonts
+#   icons/   – SVG icon sprites (if not using Heroicons directly)

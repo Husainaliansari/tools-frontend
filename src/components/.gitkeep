@@ -1,0 +1,10 @@
+/**
+ * components/ – Shared, reusable Vue components.
+ *
+ * Organize by category:
+ *   ui/        – Primitive UI elements (Button, Input, Modal, Badge…)
+ *   feedback/  – Toast, Alert, Spinner, Skeleton…
+ *   forms/     – Form wrappers, validation, field groups
+ *   data/      – Table, Pagination, DataGrid
+ *   layout/    – Container, Grid, Divider, Card
+ */

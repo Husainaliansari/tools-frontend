@@ -1,0 +1,356 @@
+@import 'tailwindcss';
+
+/* ─── Fonts ────────────────────────────────────────────────────────────────── */
+/* Inter (UI) + Cormorant Garamond (serif accent) — matches the PDFly design. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Cormorant+Garamond:wght@500;600;700&display=swap');
+
+/* ─── Design Tokens (CSS Custom Properties) ────────────────────────────────── */
+/*
+ * Colors are stored as space-separated HSL channels so they compose with alpha
+ * via `hsl(var(--token) / <a>)`. Palette mirrors the PDFly design system.
+ */
+:root {
+  /* Brand colors (light mode) */
+  --color-primary: 226 71% 40%; /* #1e40af — deep navy-blue */
+  --color-primary-hover: 226 71% 34%;
+  --color-primary-foreground: 0 0% 100%;
+  --color-navy: 224 64% 33%; /* #1e3a8a */
+  --color-indigo: 245 75% 59%; /* #4f46e5 */
+
+  /* Surface colors (light mode) */
+  --color-bg: 220 33% 97%; /* #f4f6fa */
+  --color-bg-alt: 220 33% 95%; /* #eef2f8 */
+  --color-surface: 0 0% 100%; /* #ffffff */
+  --color-surface-elevated: 0 0% 100%;
+  --color-surface-muted: 210 40% 98%; /* #f8fafc */
+  --color-chip: 220 33% 95%; /* #eef2f8 */
+  --color-border: 222 30% 92%;
+  --color-border-strong: 222 22% 84%;
+
+  /* Text colors (light mode) */
+  --color-text: 222 47% 11%; /* #0f172a */
+  --color-text-muted: 215 28% 31%; /* #475569 */
+  --color-text-faint: 215 20% 65%; /* #94a3b8 */
+
+  /* Feedback */
+  --color-success: 142 76% 36%; /* #16a34a */
+  --color-warning: 32 95% 44%; /* #d97706 */
+  --color-danger: 0 72% 51%; /* #dc2626 */
+  --color-info: 226 71% 40%;
+  --color-purple: 262 83% 58%; /* #7c3aed */
+
+  /* Hero background wash */
+  --hero-bg:
+    radial-gradient(1200px 520px at 15% -20%, hsl(var(--color-primary) / 0.1), transparent),
+    radial-gradient(1000px 520px at 95% -10%, hsl(var(--color-indigo) / 0.1), transparent),
+    hsl(var(--color-bg));
+
+  /* Shadows */
+  --shadow-sm: 0 2px 10px rgb(30 41 59 / 0.08);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 30px rgb(15 23 42 / 0.07);
+  --shadow-xl: 0 18px 40px -20px rgb(30 41 59 / 0.28);
+
+  /* Border radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 100ms ease;
+  --transition-base: 150ms ease;
+  --transition-slow: 300ms ease;
+
+  /* Z-indices */
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-overlay: 1200;
+  --z-modal: 1300;
+  --z-toast: 1400;
+  --z-tooltip: 1500;
+}
+
+/* ─── Dark Mode Tokens ────────────────────────────────────────────────────── */
+.dark {
+  --color-primary: 217 91% 60%; /* #3b82f6 */
+  --color-primary-hover: 217 91% 66%;
+  --color-navy: 224 64% 33%;
+  --color-indigo: 239 84% 67%; /* #6366f1 */
+
+  --color-bg: 222 49% 8%; /* #0b1120 */
+  --color-bg-alt: 222 47% 12%;
+  --color-surface: 222 46% 12%; /* #111a2e */
+  --color-surface-elevated: 222 46% 12%;
+  --color-surface-muted: 222 41% 18%; /* #1b2740 */
+  --color-chip: 222 41% 18%; /* #1b2740 */
+  --color-border: 217 24% 27%;
+  --color-border-strong: 217 20% 36%;
+
+  --color-text: 210 40% 96%; /* #f1f5f9 */
+  --color-text-muted: 215 20% 65%; /* #94a3b8 */
+  --color-text-faint: 215 16% 47%; /* #64748b */
+
+  --color-success: 142 71% 45%; /* #22c55e */
+  --color-warning: 38 92% 50%; /* #f59e0b */
+  --color-danger: 0 84% 60%; /* #ef4444 */
+  --color-info: 217 91% 60%;
+  --color-purple: 262 83% 65%;
+
+  --hero-bg:
+    radial-gradient(1200px 500px at 20% -10%, hsl(var(--color-primary) / 0.18), transparent),
+    radial-gradient(900px 500px at 90% 0%, hsl(var(--color-indigo) / 0.16), transparent),
+    hsl(var(--color-bg));
+
+  --shadow-sm: 0 2px 8px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 8px 24px rgb(0 0 0 / 0.35);
+  --shadow-xl: 0 10px 30px -12px rgb(0 0 0 / 0.6);
+}
+
+/* ─── Tailwind theme bridge ────────────────────────────────────────────────── */
+/* Expose design tokens as Tailwind color/utility names (e.g. bg-surface, text-muted). */
+@theme inline {
+  --color-primary: hsl(var(--color-primary));
+  --color-primary-hover: hsl(var(--color-primary-hover));
+  --color-navy: hsl(var(--color-navy));
+  --color-indigo: hsl(var(--color-indigo));
+  --color-bg: hsl(var(--color-bg));
+  --color-bg-alt: hsl(var(--color-bg-alt));
+  --color-surface: hsl(var(--color-surface));
+  --color-surface-muted: hsl(var(--color-surface-muted));
+  --color-chip: hsl(var(--color-chip));
+  --color-border: hsl(var(--color-border));
+  --color-border-strong: hsl(var(--color-border-strong));
+  --color-text: hsl(var(--color-text));
+  --color-text-muted: hsl(var(--color-text-muted));
+  --color-text-faint: hsl(var(--color-text-faint));
+  --color-success: hsl(var(--color-success));
+  --color-warning: hsl(var(--color-warning));
+  --color-danger: hsl(var(--color-danger));
+  --color-info: hsl(var(--color-info));
+  --color-purple: hsl(var(--color-purple));
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+}
+
+/* ─── Global Reset & Base ─────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family:
+    'Inter',
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  background-color: hsl(var(--color-bg));
+  color: hsl(var(--color-text));
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition:
+    background-color var(--transition-slow),
+    color var(--transition-slow);
+}
+
+/* ─── Focus visible ───────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid hsl(var(--color-primary));
+  outline-offset: 2px;
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(120 130 150 / 0.35);
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--color-text-faint));
+  background-clip: padding-box;
+}
+
+/* ─── Selection ───────────────────────────────────────────────────────────── */
+::selection {
+  background-color: hsl(var(--color-primary) / 0.2);
+  color: hsl(var(--color-text));
+}
+
+/* ─── Images ──────────────────────────────────────────────────────────────── */
+img,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+/* ─── Links ───────────────────────────────────────────────────────────────── */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ─── Transitions ─────────────────────────────────────────────────────────── */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--transition-slow);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition:
+    opacity var(--transition-slow),
+    transform var(--transition-slow);
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+/* ─── Utility classes ─────────────────────────────────────────────────────── */
+/* Centered page container — occupies 90% of the viewport width. */
+.pf-container {
+  width: 90%;
+  max-width: 90%;
+  margin: 0 auto;
+  padding: 0;
+}
+
+/* Serif accent used for the italic word in marketing headings. */
+.pf-serif {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-weight: 600;
+  color: hsl(var(--color-primary));
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ─── Keyframes (mirrors the PDFly motion set) ─────────────────────────────── */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Animation helpers */
+.animate-spin-slow {
+  animation: spin 2s linear infinite;
+}
+.animate-fade-up {
+  animation: fadeUp 0.3s ease;
+}
+.animate-fade-in {
+  animation: fadeIn 0.2s ease;
+}
+.animate-floaty {
+  animation: floaty 3s ease-in-out infinite;
+}
+.animate-pulse-dot {
+  animation: pulseDot 1.2s infinite;
+}
+.animate-toast-in {
+  animation: toastIn 0.3s ease;
+}
