@@ -150,6 +150,8 @@ export function createEditor() {
   const detected = ref<Record<number, DetectedObject[]>>({})
   /** Which object families have already been parsed for each page (cache guard). */
   const detectedKinds = new Map<number, { text: boolean; objects: boolean }>()
+  /** True text colours sampled from the canvas, keyed by detected-object id. */
+  const sampledColors = ref<Record<string, string>>({})
   /** Active content-editing mode. Nothing is parsed while this is `none`. */
   const editMode = ref<EditMode>('none')
   const detecting = ref(false)
@@ -655,6 +657,22 @@ export function createEditor() {
     }
   }
 
+  /**
+   * Resolve the true colour of a detected text object for the toolbar, without
+   * materialising an edit (selection must never alter appearance). Samples the
+   * canvas once and caches the result reactively.
+   */
+  function ensureTextColor(det: DetectedObject): string {
+    if (det.kind !== 'text') return '#111827'
+    const edit = editFor(det.id)
+    if (edit && edit.kind === 'text') return edit.color
+    const cached = sampledColors.value[det.id]
+    if (cached) return cached
+    const color = sampleTextColor({ x: det.x, y: det.y, w: det.w, h: det.h }, det.page)
+    sampledColors.value = { ...sampledColors.value, [det.id]: color }
+    return color
+  }
+
   const editFor = (id: string | null): ContentEdit | null =>
     contentEdits.value.find((e) => e.id === id) ?? null
   const selectedContentEdit = computed(() => editFor(selectedContentId.value))
@@ -732,7 +750,15 @@ export function createEditor() {
     return off.toDataURL('image/png')
   }
 
-  /** Sample text color from the rendered page canvas inside a box. */
+  /**
+   * Sample a text run's true colour from the rendered page canvas.
+   *
+   * Averaging every inked pixel drags the result toward the background because
+   * anti-aliased glyph edges are half-blended — black text reads as grey. We
+   * instead keep only the pixels *furthest* from the background (the solid glyph
+   * cores) and average those, so black stays black and coloured text keeps its
+   * hue.
+   */
   function sampleTextColor(box: Box, page: number): string {
     const canvas = pageCanvases.get(page)
     const ctx = canvas?.getContext('2d', { willReadFrequently: true })
@@ -744,28 +770,32 @@ export function createEditor() {
     const h = Math.min(canvas.height - y0, Math.round(box.h * k))
     if (w <= 0 || h <= 0) return '#111827'
     try {
-      const imgData = ctx.getImageData(x0, y0, w, h)
-      const data = imgData.data
+      const data = ctx.getImageData(x0, y0, w, h).data
       const bg = sampleBackground(box, page)
       const bgR = Number.parseInt(bg.slice(1, 3), 16) || 255
       const bgG = Number.parseInt(bg.slice(3, 5), 16) || 255
       const bgB = Number.parseInt(bg.slice(5, 7), 16) || 255
-      let textR = 0, textG = 0, textB = 0, count = 0
+      // Collect inked pixels tagged with their distance from the background.
+      const inked: { r: number; g: number; b: number; dist: number }[] = []
       for (let i = 0; i < data.length; i += 4) {
         const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3]
         if (a < 50) continue
         const dist = Math.hypot(r - bgR, g - bgG, b - bgB)
-        if (dist > 35) {
-          textR += r
-          textG += g
-          textB += b
-          count++
-        }
+        if (dist > 35) inked.push({ r, g, b, dist })
       }
-      if (count > 0) {
-        const hex = (n: number) => Math.round(n / count).toString(16).padStart(2, '0')
-        return `#${hex(textR)}${hex(textG)}${hex(textB)}`
+      if (!inked.length) return '#111827'
+      // Keep the most-saturated core (top 45% by distance) — the glyph body,
+      // not the faint anti-aliased fringe — and average it.
+      inked.sort((p, q) => q.dist - p.dist)
+      const core = inked.slice(0, Math.max(1, Math.floor(inked.length * 0.45)))
+      let tr = 0, tg = 0, tb = 0
+      for (const p of core) {
+        tr += p.r
+        tg += p.g
+        tb += p.b
       }
+      const hex = (n: number) => Math.round(n / core.length).toString(16).padStart(2, '0')
+      return `#${hex(tr)}${hex(tg)}${hex(tb)}`
     } catch {
       /* fallback */
     }
@@ -790,7 +820,7 @@ export function createEditor() {
             loadedFontFamily: det.loadedFontFamily,
             originalFontName: det.originalFontName,
             embeddedFont: det.embeddedFont,
-            color: sampleTextColor(orig, det.page),
+            color: sampledColors.value[det.id] ?? sampleTextColor(orig, det.page),
             align: det.align || 'left',
             bold: det.bold,
             italic: det.italic,
@@ -1161,6 +1191,7 @@ export function createEditor() {
     sourceBytes.value = bytes
     detected.value = {}
     detectedKinds.clear()
+    sampledColors.value = {}
     reconstructed.value = false
     await computePageSizes()
     docTick.value++
@@ -1175,6 +1206,7 @@ export function createEditor() {
     contentEdits.value = []
     detected.value = {}
     detectedKinds.clear()
+    sampledColors.value = {}
     editMode.value = 'none'
     reconstructed.value = false
     reconstructing.value = false
@@ -1628,6 +1660,8 @@ export function createEditor() {
     detecting,
     editMode,
     setEditMode,
+    sampledColors,
+    ensureTextColor,
     reconstructed,
     reconstructing,
     reconstructProgress,

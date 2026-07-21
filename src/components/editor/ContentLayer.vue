@@ -190,6 +190,8 @@
     // Selection alone does NOT materialise an edit: the block stays as a plain
     // outline over the live page. A single editable layer is created only when
     // the block is actually edited, dragged, or restyled (see materialise()).
+    // We only *read* the block's true colour so the toolbar reflects it.
+    if (cell.kind === 'text' && cell.det) editor.ensureTextColor(cell.det)
 
     const origins = new Map<string, { x: number; y: number; w: number; h: number; rotation: number; locked?: boolean }>()
     for (const cid of editor.selectedContentIds.value) {

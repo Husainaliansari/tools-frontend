@@ -29,7 +29,15 @@
   })
 
   const cColor = computed({
-    get: () => (cEdit.value && cEdit.value.kind === 'text' ? cEdit.value.color : '#111827'),
+    // Show the block's true colour: the edit's colour if materialised, else the
+    // colour sampled from the canvas on selection. Never a hardcoded default.
+    get: () => {
+      const e = cEdit.value
+      if (e && e.kind === 'text') return e.color
+      const d = cDet.value
+      if (d && d.kind === 'text') return editor.sampledColors.value[d.id] ?? '#111827'
+      return '#111827'
+    },
     set: (val: string) => editor.editSelectedContent({ color: val }),
   })
 
@@ -87,6 +95,11 @@
   const cOpacityPct = computed({
     get: () => Math.round((cEdit.value?.opacity ?? 1) * 100),
     set: (val: number) => editor.editSelectedContent({ opacity: val / 100 }),
+  })
+  // BaseColorPicker's opacity model is 0–1 (it does its own ×100 for display).
+  const cOpacity01 = computed({
+    get: () => cEdit.value?.opacity ?? 1,
+    set: (val: number) => editor.editSelectedContent({ opacity: val }),
   })
 
   const isLocked = computed(() => {
@@ -149,14 +162,12 @@
     },
   })
 
-  const currentOpacityPct = computed({
+  // 0–1 opacity model for the color picker (see cOpacity01).
+  const currentOpacity01 = computed({
     get: () =>
-      Math.round(
-        ((sel.value && 'opacity' in sel.value ? sel.value.opacity : editor.style.value.opacity) ??
-          1) * 100,
-      ),
-    set: (pct: number) => {
-      editor.setStyle({ opacity: pct / 100 })
+      (sel.value && 'opacity' in sel.value ? sel.value.opacity : editor.style.value.opacity) ?? 1,
+    set: (v: number) => {
+      editor.setStyle({ opacity: v })
     },
   })
 
@@ -432,7 +443,7 @@
         <div class="props__group">
           <BaseColorPicker
             v-model="cColor"
-            v-model:opacity="cOpacityPct"
+            v-model:opacity="cOpacity01"
             :show-opacity="true"
             label="Text color"
           />
@@ -629,7 +640,7 @@
           <span class="props__lbl">Color</span>
           <BaseColorPicker
             v-model="currentColor"
-            v-model:opacity="currentOpacityPct"
+            v-model:opacity="currentOpacity01"
             :show-opacity="showOpacity"
             label="Annotation color"
           />

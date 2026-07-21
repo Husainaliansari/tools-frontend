@@ -8,7 +8,7 @@
    * the optional layout grid. Placeholder geometry comes from the editor's
    * page-size table so the scroll height is stable before rendering.
    */
-  import { computed, onBeforeUnmount, ref, watch } from 'vue'
+  import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
   import type { RenderTask } from 'pdfjs-dist'
   import AnnotationOverlay from './AnnotationOverlay.vue'
   import ContentLayer from './ContentLayer.vue'
@@ -88,8 +88,14 @@
       if (active) void render()
       else release()
     },
-    { immediate: true },
   )
+
+  // The watch above can only fire on *changes*. When a page mounts, its render
+  // triggers (scale/docTick) may already have settled, so do the initial paint
+  // here — once the <canvas> element actually exists.
+  onMounted(() => {
+    if (props.active) void render()
+  })
 
   onBeforeUnmount(release)
 </script>

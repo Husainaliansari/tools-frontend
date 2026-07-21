@@ -319,13 +319,19 @@ async function extractText(page: PDFPageProxy, pageHeight: number): Promise<Dete
       const top = line.baseline + line.ascent * line.fontSize
       const bottom = line.baseline + line.descent * line.fontSize
 
-      let align: 'left' | 'center' | 'right' = 'left'
+      // Alignment from the margins, not the midpoint: a line is only centred
+      // when both side margins are substantial AND roughly equal, and only
+      // right-aligned when it hugs the right edge with a large left margin.
+      // This keeps ordinary left-aligned / justified body text left-aligned.
+      const pageW = pageViewport.width
       const lineW = line.right - line.left
-      const midX = line.left + lineW / 2
-      if (Math.abs(midX - pageViewport.width / 2) < 25 && lineW < pageViewport.width * 0.8) {
-        align = 'center'
-      } else if (pageViewport.width - line.right < 40 && line.left > pageViewport.width * 0.5) {
-        align = 'right'
+      const leftGap = line.left
+      const rightGap = pageW - line.right
+      let align: 'left' | 'center' | 'right' = 'left'
+      if (lineW < pageW * 0.9) {
+        const symmetric = Math.abs(leftGap - rightGap) < pageW * 0.05
+        if (symmetric && leftGap > pageW * 0.15) align = 'center'
+        else if (rightGap < pageW * 0.05 && leftGap > pageW * 0.3) align = 'right'
       }
 
       rawLines.push({
