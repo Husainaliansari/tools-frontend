@@ -51,8 +51,12 @@ export const ROUTE_NAMES = {
   CONTACT: 'contact',
   HELP: 'help',
   FAQ: 'faq',
+  FEEDBACK: 'feedback',
   PRIVACY: 'privacy',
   TERMS: 'terms',
+  DISCLAIMER: 'disclaimer',
+  COOKIES: 'cookies',
+  SITEMAP: 'sitemap',
   // Auth
   LOGIN: 'login',
   REGISTER: 'register',
@@ -75,4 +79,6 @@ export type RouteName = (typeof ROUTE_NAMES)[keyof typeof ROUTE_NAMES]
 export * from './tools'
 export * from './mock-data'
 export * from './content'
+export * from './legal'
 export * from './planLimits'
+export * from './seo'

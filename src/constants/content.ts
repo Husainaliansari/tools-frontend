@@ -1,82 +1,134 @@
 /**
- * Static marketing copy for the prose info pages and help center.
+ * Static marketing copy for the info pages (About, Help, Pricing).
+ * Legal document copy lives in `legal.ts`.
  */
+import type { FaqEntry } from '@types'
 
-export interface ProseSection {
-  heading: string
+// ─── About page ──────────────────────────────────────────────────────────────
+
+export interface AboutStat {
+  value: string
+  label: string
+}
+
+/** Headline numbers shown on the About page. */
+export const ABOUT_STATS: AboutStat[] = [
+  { value: '30+', label: 'PDF tools' },
+  { value: '40,000+', label: 'weekly users' },
+  { value: '2M+', label: 'files processed' },
+  { value: '2 hrs', label: 'until files auto-delete' },
+]
+
+export interface AboutFeature {
+  icon: string
+  title: string
   body: string
 }
 
-export interface ProseContent {
+/** What the platform offers — the “everything in one place” pitch. */
+export const ABOUT_FEATURES: AboutFeature[] = [
+  {
+    icon: 'layers',
+    title: 'One toolkit for everything',
+    body: 'Compress, convert, merge, split, edit, sign, protect and OCR — over 30 tools that work together, so you never juggle five different apps again.',
+  },
+  {
+    icon: 'zap',
+    title: 'Fast and effortless',
+    body: 'Drag, drop, done. Many tools run instantly right in your browser, with a clean interface that never gets in your way.',
+  },
+  {
+    icon: 'monitor',
+    title: 'Works everywhere',
+    body: 'No installs, no plugins. PDFly runs on any modern browser, on desktop, tablet or phone — Windows, macOS, Linux and mobile alike.',
+  },
+  {
+    icon: 'shield',
+    title: 'Private by design',
+    body: 'Files are encrypted in transit and at rest, processed only for the task you chose, and automatically deleted within two hours.',
+  },
+]
+
+export interface AboutPillar {
+  icon: string
   title: string
-  subtitle: string
-  sections: ProseSection[]
+  body: string
 }
 
-export const ABOUT_CONTENT: ProseContent = {
-  title: 'About PDFly',
-  subtitle: 'Making documents effortless for everyone.',
-  sections: [
-    {
-      heading: 'Our mission',
-      body: 'We believe working with PDFs shouldn’t require expensive software or a computer science degree. PDFly brings together every tool you need in one fast, friendly place — free for everyone.',
-    },
-    {
-      heading: 'The story',
-      body: 'PDFly started in 2024 when our founders got tired of juggling five different apps just to compress and merge a report. Today, more than 40,000 people rely on PDFly every week.',
-    },
-    {
-      heading: 'Our values',
-      body: 'Privacy first, speed always, and simplicity above all. Your files are yours — we never store them longer than needed and never sell your data.',
-    },
-  ],
+/** Trust / security pillars. */
+export const ABOUT_PILLARS: AboutPillar[] = [
+  {
+    icon: 'lock',
+    title: 'Bank-grade encryption',
+    body: 'Every upload and download is protected with 256-bit TLS encryption, and files are encrypted at rest while being processed.',
+  },
+  {
+    icon: 'clock',
+    title: 'Automatic deletion',
+    body: 'We keep your files only as long as it takes to run your tool. Everything is permanently erased within two hours — usually much sooner.',
+  },
+  {
+    icon: 'eye-off',
+    title: 'No snooping, ever',
+    body: 'We never read, sell, or analyse the content of your documents, and we don’t use your files to train any models.',
+  },
+  {
+    icon: 'check-circle',
+    title: 'Built to last',
+    body: 'A reliable, monitored platform with a 99.9% uptime target so your work is there when you need it.',
+  },
+]
+
+export interface AboutValue {
+  title: string
+  body: string
 }
 
-export const PRIVACY_CONTENT: ProseContent = {
-  title: 'Privacy Policy',
-  subtitle: 'Last updated May 1, 2026',
-  sections: [
-    {
-      heading: 'Overview',
-      body: 'This Privacy Policy explains how PDFly handles your information. In short: we collect as little as possible and never sell your data.',
-    },
-    {
-      heading: 'Your files',
-      body: 'Uploaded files are encrypted in transit and at rest, processed to perform the tool you requested, and automatically deleted within two hours. We do not read, share, or analyze the content of your documents.',
-    },
-    {
-      heading: 'Data we collect',
-      body: 'We collect basic account information (name, email) and anonymous usage analytics to improve the product. You can request deletion of your account and data at any time.',
-    },
-    {
-      heading: 'Cookies',
-      body: 'We use essential cookies to keep you signed in and remember your preferences. We do not use third-party advertising cookies.',
-    },
-  ],
-}
+/** Company values / principles. */
+export const ABOUT_VALUES: AboutValue[] = [
+  {
+    title: 'Privacy first',
+    body: 'We collect as little as possible and treat your documents as strictly yours. Privacy isn’t a feature — it’s the foundation.',
+  },
+  {
+    title: 'Simplicity always',
+    body: 'Powerful doesn’t have to mean complicated. We obsess over making every tool obvious and quick.',
+  },
+  {
+    title: 'Free for everyone',
+    body: 'The core tools are free with generous limits, because working with documents shouldn’t require a subscription.',
+  },
+  {
+    title: 'Honest and open',
+    body: 'Clear pricing, plain-language policies, and no dark patterns. We say what we do and do what we say.',
+  },
+]
 
-export const TERMS_CONTENT: ProseContent = {
-  title: 'Terms & Conditions',
-  subtitle: 'Last updated May 1, 2026',
-  sections: [
-    {
-      heading: 'Acceptance',
-      body: 'By using PDFly you agree to these Terms. If you do not agree, please do not use the service.',
-    },
-    {
-      heading: 'Acceptable use',
-      body: 'You agree not to upload unlawful content or use PDFly to infringe the rights of others. We reserve the right to suspend accounts that violate these terms.',
-    },
-    {
-      heading: 'Service availability',
-      body: 'We aim for 99.9% uptime but the service is provided “as is” without warranties. We are not liable for any loss of data — always keep your own backups.',
-    },
-    {
-      heading: 'Changes',
-      body: 'We may update these Terms from time to time. Continued use after changes constitutes acceptance of the new Terms.',
-    },
-  ],
-}
+/** About-page FAQ (why-trust-us angle). */
+export const ABOUT_FAQS: FaqEntry[] = [
+  {
+    question: 'Who is behind PDFly?',
+    answer:
+      'PDFly is built by a small, independent team of engineers and designers who were tired of clunky, expensive PDF software. We started in 2024 and have been improving the toolkit ever since.',
+  },
+  {
+    question: 'How can PDFly be free?',
+    answer:
+      'The core tools are free and supported by our optional Pro and Enterprise plans, plus non-intrusive advertising. Upgrading unlocks larger files, batch processing and higher limits.',
+  },
+  {
+    question: 'Is it really safe to upload my documents?',
+    answer:
+      'Yes. Files are encrypted in transit and at rest, used only to perform the tool you selected, and automatically deleted within two hours. Many tools even process your file entirely in your browser.',
+  },
+  {
+    question: 'Do you sell my data?',
+    answer:
+      'Never. We do not sell personal information and we do not use the content of your files for advertising or model training. See our Privacy Policy for the full details.',
+  },
+]
+
+// ─── Help center ─────────────────────────────────────────────────────────────
 
 export interface HelpCategory {
   icon: string
@@ -93,17 +145,7 @@ export const HELP_CATEGORIES: HelpCategory[] = [
   { icon: 'zap', title: 'Troubleshooting', articles: '13 articles' },
 ]
 
-export interface ContactChannel {
-  icon: string
-  label: string
-  value: string
-}
-
-export const CONTACT_CHANNELS: ContactChannel[] = [
-  { icon: 'mail', label: 'Email', value: 'hello@pdfly.com' },
-  { icon: 'phone', label: 'Phone', value: '+1 (555) 021-8890' },
-  { icon: 'globe', label: 'Office', value: 'San Francisco, CA' },
-]
+// ─── Pricing ─────────────────────────────────────────────────────────────────
 
 export interface PricingPlan {
   name: string
@@ -122,7 +164,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     cadence: 'forever',
     description: 'Everything you need for everyday PDF tasks.',
     features: [
-      'All 29 tools',
+      'All 30+ tools',
       'Files up to 50 MB',
       '3 tasks per day',
       'Files deleted after 2 hours',

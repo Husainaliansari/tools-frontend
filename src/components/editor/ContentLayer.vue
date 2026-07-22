@@ -477,10 +477,35 @@
     editor.patchContent(id, patch as Partial<ContentEdit>, { record: false })
   }
 
+  // Typing is hot: measuring height forces a synchronous layout, so we coalesce
+  // text + height writes into a single rAF per frame instead of one per keystroke.
+  // Normalisation (ligature/whitespace cleanup) is deferred to blur — the visible
+  // text during editing is the uncontrolled contenteditable's own DOM.
+  let textRaf = 0
+  let pendingEl: HTMLElement | null = null
+  let pendingId: string | null = null
+  function commitPendingText(): void {
+    if (!pendingId || !pendingEl) return
+    const newH = measureTextHeight(pendingEl, pendingId)
+    editor.patchContent(pendingId, { h: newH, text: pendingEl.innerText } as Partial<ContentEdit>, { record: false })
+  }
+  function flushTextSync(): void {
+    if (textRaf) {
+      globalThis.cancelAnimationFrame(textRaf)
+      textRaf = 0
+    }
+    commitPendingText()
+    pendingEl = null
+    pendingId = null
+  }
   function onTextInput(event: Event, id: string): void {
-    const el = event.target as HTMLElement
-    const text = normalizeText(el.innerText)
-    syncTextHeight(id, el, text)
+    pendingEl = event.target as HTMLElement
+    pendingId = id
+    if (textRaf) return
+    textRaf = globalThis.requestAnimationFrame(() => {
+      textRaf = 0
+      commitPendingText()
+    })
   }
 
   watch(
@@ -501,6 +526,7 @@
     },
   )
   function onTextBlur(): void {
+    flushTextSync() // commit any keystrokes still queued for the next frame
     if (editingId.value) {
       const edit = editor.editFor(editingId.value)
       if (edit && edit.kind === 'text') {
@@ -622,7 +648,13 @@
     const isMultiLine = t.text ? t.text.includes('\n') : false
     const lineHeight = isMultiLine ? (t.lineHeight || 1.15) : 1.05
     const letterSpacing = t.letterSpacing ? `${t.letterSpacing * scale.value}px` : 'normal'
-    const paragraphSpacing = t.paragraphSpacing ? `${t.paragraphSpacing * scale.value}px` : '0px'
+    const wordSpacing = t.wordSpacing ? `${t.wordSpacing * scale.value}px` : 'normal'
+    const marginTop = t.paragraphSpacingBefore ? `${t.paragraphSpacingBefore * scale.value}px` : '0px'
+    const marginBottom = t.paragraphSpacingAfter
+      ? `${t.paragraphSpacingAfter * scale.value}px`
+      : t.paragraphSpacing
+        ? `${t.paragraphSpacing * scale.value}px`
+        : '0px'
 
     const decs = [
       t.underline ? 'underline' : null,
@@ -632,12 +664,17 @@
     return {
       fontFamily: fontStack,
       fontSize: `${t.fontSize * scale.value}px`,
-      fontWeight: t.bold ? 700 : 400,
-      fontStyle: t.italic ? 'italic' : 'normal',
+      fontWeight: t.fontWeight || (t.bold ? 700 : 400),
+      fontStyle: t.fontStyle || (t.italic ? 'italic' : 'normal'),
       textDecoration: decs,
+      backgroundColor: t.highlightColor || 'transparent',
       lineHeight: `${lineHeight}`,
       letterSpacing,
-      marginBottom: paragraphSpacing,
+      wordSpacing,
+      marginTop,
+      marginBottom,
+      textTransform: t.textTransform || 'none',
+      verticalAlign: t.verticalAlign || 'baseline',
       opacity,
       color: edit && edit.kind === 'text' ? edit.color : (t.color || '#111827'),
       textAlign: (edit && edit.kind === 'text' ? edit.align : t.align || 'left') as 'left',

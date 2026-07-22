@@ -20,7 +20,12 @@ export type EditorAction =
   | 'print'
   | 'duplicate'
   | 'copy'
+  | 'cut'
   | 'paste'
+  | 'format-painter'
+  | 'clear-formatting'
+  | 'find-replace'
+  | 'hyperlink'
   | 'search'
   | 'signature'
   | 'insert-image'
@@ -45,6 +50,7 @@ export interface RibbonItem {
   id: string
   label: string
   icon: string
+  shortcut?: string
   /** Activates a drawing tool. */
   tool?: ToolId
   /** Fires a shell action instead of switching tools. */
@@ -74,90 +80,51 @@ export const RIBBON: RibbonTab[] = [
     icon: 'home',
     groups: [
       {
-        label: 'Tools',
+        label: 'Basic',
         items: [
+          { id: 'hand', label: 'Hand', icon: 'hand', tool: 'hand' },
           { id: 'select', label: 'Select', icon: 'mouse-pointer', tool: 'select' },
-          { id: 'hand', label: 'Pan', icon: 'hand', tool: 'hand' },
-        ],
-      },
-      {
-        label: 'Annotate',
-        items: [
           { id: 'text', label: 'Text', icon: 'type', tool: 'text' },
+          { id: 'snapshot', label: 'Snapshot', icon: 'camera', soon: true },
+          { id: 'clipboard', label: 'Clipboard', icon: 'credit-card', soon: true },
+        ],
+      },
+      {
+        label: 'View',
+        items: [
+          { id: 'zoom', label: 'Zoom', icon: 'search', soon: true },
+          { id: 'fit', label: 'Page Fit', icon: 'maximize', soon: true },
+          { id: 'rotate-left', label: 'Rotate Left', icon: 'rotate-ccw', action: 'rotate-left' },
+          { id: 'rotate-right', label: 'Rotate Right', icon: 'rotate-cw', action: 'rotate-right' },
+        ],
+      },
+      {
+        label: 'Markup',
+        items: [
+          { id: 'typewriter', label: 'Typewriter', icon: 'type', soon: true },
           { id: 'highlight', label: 'Highlight', icon: 'highlighter', tool: 'highlight' },
-          { id: 'note', label: 'Note', icon: 'message-square', tool: 'note' },
-          { id: 'ink', label: 'Draw', icon: 'pen-line', tool: 'ink' },
         ],
       },
       {
-        label: 'History',
+        label: 'Navigate',
         items: [
-          { id: 'undo', label: 'Undo', icon: 'undo', action: 'undo' },
-          { id: 'redo', label: 'Redo', icon: 'redo', action: 'redo' },
+          { id: 'link', label: 'Link', icon: 'link', tool: 'link' },
+          { id: 'bookmark', label: 'Bookmark', icon: 'bookmark', soon: true },
         ],
       },
-      {
-        label: 'Find',
-        items: [{ id: 'search', label: 'Search', icon: 'search', action: 'search' }],
-      },
-      {
-        label: 'Document',
-        items: [{ id: 'print', label: 'Print', icon: 'printer', action: 'print' }],
-      },
-    ],
-  },
-  {
-    id: 'comment',
-    label: 'Comment',
-    icon: 'message-square',
-    groups: [
-      {
-        label: 'Text markup',
-        items: [
-          { id: 'highlight', label: 'Highlight', icon: 'highlighter', tool: 'highlight' },
-          { id: 'underline', label: 'Underline', icon: 'underline', tool: 'underline' },
-          { id: 'strike', label: 'Strikethrough', icon: 'strikethrough', tool: 'strikethrough' },
-          { id: 'squiggly', label: 'Squiggly', icon: 'activity', tool: 'squiggly' },
-        ],
-      },
-      {
-        label: 'Drawing',
-        items: [
-          { id: 'ink', label: 'Freehand', icon: 'pen-line', tool: 'ink' },
-          { id: 'rect', label: 'Rectangle', icon: 'square', tool: 'rect' },
-          { id: 'ellipse', label: 'Ellipse', icon: 'circle', tool: 'ellipse' },
-          { id: 'arrow', label: 'Arrow', icon: 'move-up-right', tool: 'arrow' },
-          { id: 'line', label: 'Line', icon: 'minus', tool: 'line' },
-        ],
-      },
-      {
-        label: 'Notes & stamps',
-        items: [
-          { id: 'note', label: 'Sticky note', icon: 'message-square', tool: 'note' },
-          { id: 'stamp', label: 'Stamp', icon: 'stamp', tool: 'stamp' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'insert',
-    label: 'Insert',
-    icon: 'plus',
-    groups: [
       {
         label: 'Media',
         items: [
-          { id: 'insert-image', label: 'Image', icon: 'image', action: 'insert-image' },
-          { id: 'signature', label: 'Signature', icon: 'file-signature', action: 'signature' },
-          { id: 'stamp', label: 'Stamp', icon: 'stamp', tool: 'stamp' },
+          { id: 'attachment', label: 'File Attachment', icon: 'file-plus', soon: true },
+          { id: 'image-anno', label: 'Image Annotation', icon: 'image', tool: 'image' },
+          { id: 'media', label: 'Audio & Video', icon: 'monitor', soon: true },
         ],
       },
       {
-        label: 'Content',
+        label: 'Options',
         items: [
-          { id: 'text', label: 'Text box', icon: 'type', tool: 'text' },
-          { id: 'whiteout', label: 'Whiteout', icon: 'eraser', tool: 'whiteout' },
-          { id: 'link', label: 'Link', icon: 'link', tool: 'link' },
+          { id: 'search', label: 'Search', icon: 'search', action: 'search' },
+          { id: 'more', label: 'More', icon: 'dots', soon: true },
         ],
       },
     ],
@@ -212,6 +179,63 @@ export const RIBBON: RibbonTab[] = [
       {
         label: 'Document',
         items: [{ id: 'metadata', label: 'Metadata', icon: 'info', action: 'metadata' }],
+      },
+    ],
+  },
+  {
+    id: 'comment',
+    label: 'Comment',
+    icon: 'message-square',
+    groups: [
+      {
+        label: 'Text markup',
+        items: [
+          { id: 'highlight', label: 'Highlight', icon: 'highlighter', tool: 'highlight' },
+          { id: 'underline', label: 'Underline', icon: 'underline', tool: 'underline' },
+          { id: 'strike', label: 'Strikethrough', icon: 'strikethrough', tool: 'strikethrough' },
+          { id: 'squiggly', label: 'Squiggly', icon: 'activity', tool: 'squiggly' },
+        ],
+      },
+      {
+        label: 'Drawing',
+        items: [
+          { id: 'ink', label: 'Freehand', icon: 'pen-line', tool: 'ink' },
+          { id: 'rect', label: 'Rectangle', icon: 'square', tool: 'rect' },
+          { id: 'ellipse', label: 'Ellipse', icon: 'circle', tool: 'ellipse' },
+          { id: 'arrow', label: 'Arrow', icon: 'move-up-right', tool: 'arrow' },
+          { id: 'line', label: 'Line', icon: 'minus', tool: 'line' },
+        ],
+      },
+      {
+        label: 'Notes & stamps',
+        items: [
+          { id: 'note', label: 'Sticky note', icon: 'message-square', tool: 'note' },
+          { id: 'stamp', label: 'Stamp', icon: 'stamp', tool: 'stamp' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'insert',
+    label: 'Insert',
+    icon: 'plus',
+    groups: [
+      {
+        label: 'Media',
+        items: [
+          { id: 'insert-image', label: 'Image', icon: 'image', action: 'insert-image' },
+          { id: 'signature', label: 'Signature', icon: 'file-signature', action: 'signature' },
+          { id: 'stamp', label: 'Stamp', icon: 'stamp', tool: 'stamp' },
+        ],
+      },
+      {
+        label: 'Content',
+        items: [
+          { id: 'text', label: 'Text box', icon: 'type', tool: 'text' },
+          { id: 'table', label: 'Table', icon: 'table', tool: 'table' },
+          { id: 'whiteout', label: 'Whiteout', icon: 'eraser', tool: 'whiteout' },
+          { id: 'link', label: 'Link', icon: 'link', tool: 'link' },
+        ],
       },
     ],
   },

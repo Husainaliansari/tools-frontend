@@ -2,6 +2,22 @@
   /** FaqPage — standalone FAQ with a hero header. */
   import FaqItem from '@components/ui/FaqItem.vue'
   import { GENERAL_FAQS } from '@constants'
+  import { usePageMeta } from '@composables'
+
+  usePageMeta({
+    title: 'Frequently Asked Questions — PDFly',
+    description:
+      'Answers to the most common questions about PDFly — pricing, file safety, supported formats, mobile support and more.',
+    structuredData: () => ({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: GENERAL_FAQS.map((faq) => ({
+        '@type': 'Question',
+        name: faq.question,
+        acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+      })),
+    }),
+  })
 </script>
 
 <template>

@@ -1,0 +1,31 @@
+# robots.txt for PDFly — https://www.pdfly.com
+# Public marketing and tool pages are crawlable. The authenticated app,
+# auth flows and API are not useful to search engines and are disallowed.
+
+User-agent: *
+Allow: /$
+Allow: /tools
+Allow: /pricing
+Allow: /about
+Allow: /contact
+Allow: /help
+Allow: /faq
+Allow: /feedback
+Allow: /privacy
+Allow: /terms
+Allow: /disclaimer
+Allow: /cookies
+Allow: /sitemap
+
+Disallow: /app/
+Disallow: /auth/
+Disallow: /api/
+
+# Allow ad and analytics crawlers full access to public content.
+User-agent: Mediapartners-Google
+Allow: /
+
+User-agent: AdsBot-Google
+Allow: /
+
+Sitemap: https://www.pdfly.com/sitemap.xml

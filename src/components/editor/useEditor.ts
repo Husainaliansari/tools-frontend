@@ -42,6 +42,7 @@ import {
   type Box,
   type ContentEdit,
   type TextContentEdit,
+  type TextAnnotation,
   type DetectedObject,
   type DocumentMetadata,
 
@@ -121,6 +122,7 @@ export function createEditor() {
   // ─── Panels ─────────────────────────────────────────────────────────────
   const leftOpen = ref(true)
   const leftTab = ref<LeftTab>('pages')
+  const rightOpen = ref(true)
 
   // ─── Tools & selection ─────────────────────────────────────────────────────
   const activeTool = ref<ToolId>('select')
@@ -238,9 +240,45 @@ export function createEditor() {
   }
 
   function pushHistory(previous: string): void {
+    flushCoalesced() // keep discrete ops ordered after any pending live edit
     past.value.push(previous)
     if (past.value.length > HISTORY_LIMIT) past.value.shift()
     future.value = []
+  }
+
+  // ─── History coalescing ──────────────────────────────────────────────────────
+  // Continuous edits of the same target/property (dragging the colour wheel,
+  // holding a stepper) would otherwise take a full `snapshot()` (JSON.stringify
+  // of the whole model) AND push an undo entry on *every* input event — which is
+  // slow on a fully-reconstructed document and floods the undo stack. Instead we
+  // capture ONE "before" snapshot per burst and push ONE undo step when the burst
+  // settles (350 ms) or a different edit/undo intervenes.
+  let coBase: string | null = null
+  let coKey = ''
+  let coTimer = 0
+  function flushCoalesced(): void {
+    if (coTimer) {
+      globalThis.clearTimeout(coTimer)
+      coTimer = 0
+    }
+    if (coBase !== null) {
+      past.value.push(coBase)
+      if (past.value.length > HISTORY_LIMIT) past.value.shift()
+      future.value = []
+      coBase = null
+      coKey = ''
+    }
+  }
+  /** Apply a mutation, coalescing same-`key` bursts into a single undo step. */
+  function recordEdit(key: string, mutate: () => void): void {
+    if (coBase !== null && coKey !== key) flushCoalesced()
+    if (coBase === null) {
+      coBase = snapshot()
+      coKey = key
+    }
+    mutate()
+    if (coTimer) globalThis.clearTimeout(coTimer)
+    coTimer = globalThis.setTimeout(flushCoalesced, 350) as unknown as number
   }
 
   function ensureSelectionExists(): void {
@@ -309,11 +347,17 @@ export function createEditor() {
     patch: Partial<Annotation>,
     options: { record?: boolean } = {},
   ): void {
-    const previous = options.record !== false ? snapshot() : null
-    annotations.value = annotations.value.map((a) =>
-      a.id === id ? ({ ...a, ...patch } as Annotation) : a,
-    )
-    if (previous !== null) pushHistory(previous)
+    const apply = (): void => {
+      annotations.value = annotations.value.map((a) =>
+        a.id === id ? ({ ...a, ...patch } as Annotation) : a,
+      )
+    }
+    if (options.record === false) {
+      apply()
+      return
+    }
+    // Coalesce rapid same-target/same-property edits (e.g. colour-wheel drag).
+    recordEdit(`anno:${id}:${Object.keys(patch).sort().join(',')}`, apply)
   }
 
   /** Patch several annotations at once as one undo step. */
@@ -359,6 +403,7 @@ export function createEditor() {
   }
 
   function undo(): void {
+    flushCoalesced()
     if (!past.value.length) return
     future.value.push(snapshot())
     restore(past.value.pop() as string)
@@ -366,6 +411,7 @@ export function createEditor() {
   }
 
   function redo(): void {
+    flushCoalesced()
     if (!future.value.length) return
     past.value.push(snapshot())
     restore(future.value.pop() as string)
@@ -373,41 +419,211 @@ export function createEditor() {
   }
 
   function setStyle(patch: Partial<ToolStyle>): void {
-    style.value = { ...style.value, ...patch }
-    const targets = selectedAnnotations.value
+    const hasSelection = selectedAnnotations.value.length > 0 || selectedContentIds.value.length > 0
 
-    if (targets.length) {
+    const apply = (): void => {
+      style.value = { ...style.value, ...patch }
+      const targets = selectedAnnotations.value
+
+      if (targets.length) {
+        const patches = new Map<string, Partial<Annotation>>()
+        for (const current of targets) {
+          const next: Record<string, unknown> = {}
+          if ('color' in patch && 'color' in current) next.color = patch.color
+          if ('color' in patch && current.type !== 'ink' && 'stroke' in current) next.stroke = patch.color
+          if ('opacity' in patch && 'opacity' in current) next.opacity = patch.opacity
+          if ('strokeWidth' in patch && 'strokeWidth' in current) next.strokeWidth = patch.strokeWidth
+          if ('strokeWidth' in patch && current.type === 'ink') next.size = patch.strokeWidth
+          if ('fontSize' in patch && current.type === 'text') next.fontSize = patch.fontSize
+          if ('lineHeight' in patch && current.type === 'text') next.lineHeight = patch.lineHeight
+          if ('letterSpacing' in patch && current.type === 'text') next.letterSpacing = patch.letterSpacing
+          if ('fill' in patch && 'fill' in current) next.fill = patch.fill
+          if (Object.keys(next).length) patches.set(current.id, next as Partial<Annotation>)
+        }
+        if (patches.size) updateAnnotations(patches, { record: false })
+      }
+
+      if (selectedContentIds.value.length) {
+        const cPatch: Partial<ContentEdit> = {}
+        if ('color' in patch) (cPatch as Partial<TextContentEdit>).color = patch.color!
+        if ('fontSize' in patch) (cPatch as Partial<TextContentEdit>).fontSize = patch.fontSize!
+        if ('lineHeight' in patch) (cPatch as Partial<TextContentEdit>).lineHeight = patch.lineHeight!
+        if ('letterSpacing' in patch) (cPatch as Partial<TextContentEdit>).letterSpacing = patch.letterSpacing!
+        if ('opacity' in patch) cPatch.opacity = patch.opacity!
+        if (Object.keys(cPatch).length) {
+          for (const cid of selectedContentIds.value) {
+            const det = allDetected().find((d) => d.id === cid)
+            if (det && !editFor(cid)) ensureContentEdit(det)
+            patchContent(cid, cPatch, { record: false })
+          }
+        }
+      }
+    }
+
+    // No selection → just update tool defaults (no history). With a selection,
+    // coalesce rapid edits (e.g. colour-wheel drag) into one undo step.
+    if (hasSelection) {
+      recordEdit(`style:${Object.keys(patch).sort().join(',')}:${selectedIds.value.join(',')}:${selectedContentIds.value.join(',')}`, apply)
+    } else {
+      apply()
+    }
+  }
+
+  // ─── Format Painter & Text Formatting Helpers ──────────────────────────────
+  const formatPainterActive = ref(false)
+  const copiedFormat = ref<Record<string, unknown> | null>(null)
+
+  function toggleFormatPainter(): void {
+    if (formatPainterActive.value) {
+      formatPainterActive.value = false
+      copiedFormat.value = null
+      return
+    }
+    const cText = selectedContentEdit.value?.kind === 'text' ? (selectedContentEdit.value as TextContentEdit) : null
+    const aText = selected.value?.type === 'text' ? (selected.value as TextAnnotation) : null
+    if (cText) {
+      copiedFormat.value = {
+        fontFamily: cText.fontFamily,
+        fontSize: cText.fontSize,
+        color: cText.color,
+        bold: cText.bold,
+        italic: cText.italic,
+        underline: cText.underline,
+        strikethrough: cText.strikethrough,
+        fontWeight: cText.fontWeight,
+        fontStyle: cText.fontStyle,
+        highlightColor: cText.highlightColor,
+        align: cText.align,
+        lineHeight: cText.lineHeight,
+        letterSpacing: cText.letterSpacing,
+        wordSpacing: cText.wordSpacing,
+        paragraphSpacing: cText.paragraphSpacing,
+        paragraphSpacingBefore: cText.paragraphSpacingBefore,
+        paragraphSpacingAfter: cText.paragraphSpacingAfter,
+        verticalAlign: cText.verticalAlign,
+        textTransform: cText.textTransform,
+      }
+      formatPainterActive.value = true
+    } else if (aText) {
+      copiedFormat.value = {
+        fontFamily: aText.fontFamily || 'sans-serif',
+        fontSize: aText.fontSize,
+        color: aText.color,
+        bold: !!aText.bold,
+        italic: !!aText.italic,
+        underline: !!aText.underline,
+        strikethrough: !!aText.strikethrough,
+        fontWeight: aText.fontWeight,
+        fontStyle: aText.fontStyle,
+        highlightColor: aText.highlightColor,
+        align: aText.align,
+        lineHeight: aText.lineHeight,
+        letterSpacing: aText.letterSpacing,
+        wordSpacing: aText.wordSpacing,
+        paragraphSpacing: aText.paragraphSpacing,
+        paragraphSpacingBefore: aText.paragraphSpacingBefore,
+        paragraphSpacingAfter: aText.paragraphSpacingAfter,
+        verticalAlign: aText.verticalAlign,
+        textTransform: aText.textTransform,
+      }
+      formatPainterActive.value = true
+    }
+  }
+
+  function applyFormatToSelection(): void {
+    if (!copiedFormat.value) return
+    const fmt = copiedFormat.value
+    if (selectedContentIds.value.length) {
+      editSelectedContent(fmt as Partial<ContentEdit>)
+    }
+    if (selectedIds.value.length) {
       const patches = new Map<string, Partial<Annotation>>()
-      for (const current of targets) {
-        const next: Record<string, unknown> = {}
-        if ('color' in patch && 'color' in current) next.color = patch.color
-        if ('color' in patch && current.type !== 'ink' && 'stroke' in current) next.stroke = patch.color
-        if ('opacity' in patch && 'opacity' in current) next.opacity = patch.opacity
-        if ('strokeWidth' in patch && 'strokeWidth' in current) next.strokeWidth = patch.strokeWidth
-        if ('strokeWidth' in patch && current.type === 'ink') next.size = patch.strokeWidth
-        if ('fontSize' in patch && current.type === 'text') next.fontSize = patch.fontSize
-        if ('lineHeight' in patch && current.type === 'text') next.lineHeight = patch.lineHeight
-        if ('letterSpacing' in patch && current.type === 'text') next.letterSpacing = patch.letterSpacing
-        if ('fill' in patch && 'fill' in current) next.fill = patch.fill
-        if (Object.keys(next).length) patches.set(current.id, next as Partial<Annotation>)
+      for (const a of selectedAnnotations.value) {
+        if (a.type === 'text') {
+          patches.set(a.id, fmt as Partial<Annotation>)
+        }
       }
       if (patches.size) updateAnnotations(patches)
     }
+    if (formatPainterActive.value) {
+      formatPainterActive.value = false
+      copiedFormat.value = null
+    }
+  }
 
+  // Automatically apply format painter when selection changes while active
+  watch([selectedContentId, selectedId], () => {
+    if (formatPainterActive.value && copiedFormat.value && (selectedContentId.value || selectedId.value)) {
+      applyFormatToSelection()
+    }
+  })
+
+  function clearFormatting(): void {
+    const defaultFmt = {
+      bold: false,
+      italic: false,
+      underline: false,
+      strikethrough: false,
+      fontWeight: 400,
+      fontStyle: 'normal' as const,
+      highlightColor: null,
+      superscript: false,
+      subscript: false,
+      align: 'left' as const,
+      lineHeight: 1.25,
+      letterSpacing: 0,
+      wordSpacing: 0,
+      paragraphSpacing: 0,
+      paragraphSpacingBefore: 0,
+      paragraphSpacingAfter: 0,
+      textTransform: 'none' as const,
+      bulletStyle: 'none' as const,
+      indentLevel: 0,
+    }
     if (selectedContentIds.value.length) {
-      const cPatch: Partial<ContentEdit> = {}
-      if ('color' in patch) (cPatch as Partial<TextContentEdit>).color = patch.color!
-      if ('fontSize' in patch) (cPatch as Partial<TextContentEdit>).fontSize = patch.fontSize!
-      if ('lineHeight' in patch) (cPatch as Partial<TextContentEdit>).lineHeight = patch.lineHeight!
-      if ('letterSpacing' in patch) (cPatch as Partial<TextContentEdit>).letterSpacing = patch.letterSpacing!
-      if ('opacity' in patch) cPatch.opacity = patch.opacity!
-      if (Object.keys(cPatch).length) {
-        for (const cid of selectedContentIds.value) {
-          const det = allDetected().find((d) => d.id === cid)
-          if (det && !editFor(cid)) ensureContentEdit(det)
-          patchContent(cid, cPatch)
+      editSelectedContent(defaultFmt as Partial<ContentEdit>)
+    }
+    if (selectedIds.value.length) {
+      const patches = new Map<string, Partial<Annotation>>()
+      for (const a of selectedAnnotations.value) {
+        if (a.type === 'text') {
+          patches.set(a.id, defaultFmt as Partial<Annotation>)
         }
       }
+      if (patches.size) updateAnnotations(patches)
+    }
+  }
+
+  function applyTextTransform(mode: 'uppercase' | 'lowercase' | 'capitalize'): void {
+    if (selectedContentIds.value.length) {
+      for (const cid of selectedContentIds.value) {
+        const edit = editFor(cid)
+        const det = allDetected().find((d) => d.id === cid)
+        const curText = edit?.kind === 'text' ? edit.text : det?.kind === 'text' ? det.text : ''
+        if (!curText) continue
+        let nextText = curText
+        if (mode === 'uppercase') nextText = curText.toUpperCase()
+        if (mode === 'lowercase') nextText = curText.toLowerCase()
+        if (mode === 'capitalize') {
+          nextText = curText.replace(/\b\w/g, (c) => c.toUpperCase())
+        }
+        editSelectedContent({ text: nextText, textTransform: mode })
+      }
+    }
+    if (selectedIds.value.length) {
+      const patches = new Map<string, Partial<Annotation>>()
+      for (const a of selectedAnnotations.value) {
+        if (a.type === 'text' && a.text) {
+          let nextText = a.text
+          if (mode === 'uppercase') nextText = a.text.toUpperCase()
+          if (mode === 'lowercase') nextText = a.text.toLowerCase()
+          if (mode === 'capitalize') {
+            nextText = a.text.replace(/\b\w/g, (c) => c.toUpperCase())
+          }
+          patches.set(a.id, { text: nextText, textTransform: mode })
+        }
+      }
+      if (patches.size) updateAnnotations(patches)
     }
   }
 
@@ -870,16 +1086,18 @@ export function createEditor() {
   function editSelectedContent(patch: Partial<ContentEdit>): void {
     const ids = selectedContentIds.value
     if (!ids.length) return
-    const before = snapshot()
-    for (const id of ids) {
-      const det = allDetected().find((d) => d.id === id)
-      if (det && !editFor(id)) ensureContentEdit(det)
-    }
-    const set = new Set(ids)
-    contentEdits.value = contentEdits.value.map((e) =>
-      set.has(e.id) ? ({ ...e, ...patch } as ContentEdit) : e,
-    )
-    pushHistory(before)
+    // Coalesce rapid same-target/same-property edits into one undo step so a
+    // colour-wheel drag doesn't snapshot the whole model on every input event.
+    recordEdit(`content:${ids.join(',')}:${Object.keys(patch).sort().join(',')}`, () => {
+      for (const id of ids) {
+        const det = allDetected().find((d) => d.id === id)
+        if (det && !editFor(id)) ensureContentEdit(det)
+      }
+      const set = new Set(ids)
+      contentEdits.value = contentEdits.value.map((e) =>
+        set.has(e.id) ? ({ ...e, ...patch } as ContentEdit) : e,
+      )
+    })
   }
 
   /** Delete a content object: a detected one is covered; a region is dropped. */
@@ -1629,6 +1847,27 @@ export function createEditor() {
     }, 60_000)
   }
 
+  /**
+   * Unique font families actually present in the loaded document — collected
+   * from detected text objects and content edits. Feeds the font picker's
+   * "Document fonts" group. pdf.js loaded-name placeholders (`g_d0_f1`) and
+   * subset prefixes (`ABCDEF+`) are stripped/skipped.
+   */
+  const documentFonts = computed<string[]>(() => {
+    const set = new Set<string>()
+    const add = (n?: string): void => {
+      if (!n) return
+      const clean = n.replace(/^[A-Z]{6}\+/, '').trim()
+      if (!clean || /^[a-z]_?d\d/i.test(clean) || /^g_d\d/i.test(clean)) return
+      set.add(clean)
+    }
+    for (const list of Object.values(detected.value)) {
+      for (const d of list) if (d.kind === 'text') add(d.fontFamily)
+    }
+    for (const e of contentEdits.value) if (e.kind === 'text') add((e as TextContentEdit).fontFamily)
+    return [...set].sort((a, b) => a.localeCompare(b))
+  })
+
   return {
     // state
     doc,
@@ -1648,6 +1887,7 @@ export function createEditor() {
     snapEnabled,
     leftOpen,
     leftTab,
+    rightOpen,
     activeTool,
     selectedId,
     selectedIds,
@@ -1659,6 +1899,7 @@ export function createEditor() {
     // content editing
     contentEdits,
     detected,
+    documentFonts,
     detecting,
     editMode,
     setEditMode,
@@ -1708,6 +1949,13 @@ export function createEditor() {
     toggleContentSelection,
     selectContentMany,
     selectAllOnPage,
+    // format painter & text formatting
+    formatPainterActive,
+    copiedFormat,
+    toggleFormatPainter,
+    applyFormatToSelection,
+    clearFormatting,
+    applyTextTransform,
     // mutations
     addAnnotation,
     updateAnnotation,
@@ -1738,6 +1986,7 @@ export function createEditor() {
     sampleBackground,
     sampleTextColor,
     // object operations
+    clipboardContentEdits,
     copySelection,
     cutSelection,
     pasteClipboard,

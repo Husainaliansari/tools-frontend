@@ -29,9 +29,21 @@ export interface DetectedText extends Box {
   italic: boolean
   underline?: boolean
   strikethrough?: boolean
+  fontWeight?: number
+  fontStyle?: 'normal' | 'italic' | 'oblique'
+  highlightColor?: string | null
+  superscript?: boolean
+  subscript?: boolean
+  verticalAlign?: 'top' | 'middle' | 'bottom'
   lineHeight?: number
   letterSpacing?: number
+  wordSpacing?: number
   paragraphSpacing?: number
+  paragraphSpacingBefore?: number
+  paragraphSpacingAfter?: number
+  bulletStyle?: 'none' | 'disc' | 'decimal'
+  indentLevel?: number
+  textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'
   /** Font ascent/descent as fractions of the em (from pdf.js), for baseline reconstruction on export. */
   fontAscent?: number
   fontDescent?: number

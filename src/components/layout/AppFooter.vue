@@ -13,13 +13,20 @@
         { label: 'All Tools', name: ROUTE_NAMES.TOOLS },
         { label: 'Pricing', name: ROUTE_NAMES.PRICING },
         { label: 'Dashboard', name: ROUTE_NAMES.DASHBOARD },
+        { label: 'Sitemap', name: ROUTE_NAMES.SITEMAP },
       ],
     },
     {
       title: 'Company',
       links: [
-        { label: 'About', name: ROUTE_NAMES.ABOUT },
-        { label: 'Contact', name: ROUTE_NAMES.CONTACT },
+        { label: 'About Us', name: ROUTE_NAMES.ABOUT },
+        { label: 'Contact Us', name: ROUTE_NAMES.CONTACT },
+        { label: 'Feedback', name: ROUTE_NAMES.FEEDBACK },
+      ],
+    },
+    {
+      title: 'Support',
+      links: [
         { label: 'Help Center', name: ROUTE_NAMES.HELP },
         { label: 'FAQ', name: ROUTE_NAMES.FAQ },
       ],
@@ -29,6 +36,8 @@
       links: [
         { label: 'Privacy Policy', name: ROUTE_NAMES.PRIVACY },
         { label: 'Terms & Conditions', name: ROUTE_NAMES.TERMS },
+        { label: 'Disclaimer', name: ROUTE_NAMES.DISCLAIMER },
+        { label: 'Cookie Policy', name: ROUTE_NAMES.COOKIES },
       ],
     },
   ] as const
@@ -89,7 +98,7 @@
     margin: 0 auto;
     padding: 56px 0 30px;
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
     gap: 40px;
   }
   .pf-footer__brand {

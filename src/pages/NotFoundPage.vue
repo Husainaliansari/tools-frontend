@@ -3,6 +3,13 @@
   import { useRouter } from 'vue-router'
   import BaseButton from '@components/ui/BaseButton.vue'
   import { ROUTE_NAMES } from '@constants'
+  import { usePageMeta } from '@composables'
+
+  usePageMeta({
+    title: 'Page not found — PDFly',
+    description: 'The page you are looking for could not be found.',
+    noindex: true,
+  })
 
   const router = useRouter()
 </script>

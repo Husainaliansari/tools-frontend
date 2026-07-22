@@ -13,8 +13,9 @@
   import EditorWorkspace from '@components/editor/EditorWorkspace.vue'
   import ToolTileSlim from '@components/tools/ToolTileSlim.vue'
   import NotFoundPage from '@pages/NotFoundPage.vue'
-  import { ROUTE_NAMES, getRelatedTools, getToolBySlug } from '@constants'
+  import { ROUTE_NAMES, SITE_NAME, SITE_URL, getRelatedTools, getToolBySlug } from '@constants'
   import { hexAlpha } from '@utils'
+  import { usePageMeta } from '@composables'
   import type { BreadcrumbItem } from '@types'
 
   import { PLAN_LIMITS, formatLimitMB } from '@constants/planLimits'
@@ -22,6 +23,45 @@
   const route = useRoute()
   const tool = computed(() => getToolBySlug(route.params.slug as string))
   const isWorkspaceActive = ref(false)
+
+  usePageMeta({
+    title: () => (tool.value ? `${tool.value.name} — Free Online Tool | PDFly` : 'PDF Tool — PDFly'),
+    description: () =>
+      tool.value
+        ? `${tool.value.description} Free, fast and secure — ${tool.value.name} runs right in your browser with PDFly. Files are encrypted and auto-deleted.`
+        : undefined,
+    noindex: () => !tool.value,
+    structuredData: () =>
+      tool.value
+        ? [
+            {
+              '@context': 'https://schema.org',
+              '@type': 'SoftwareApplication',
+              name: tool.value.name,
+              applicationCategory: 'BusinessApplication',
+              operatingSystem: 'Web',
+              url: `${SITE_URL}/tools/${tool.value.slug}`,
+              description: tool.value.description,
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+              publisher: { '@type': 'Organization', name: SITE_NAME, url: SITE_URL },
+            },
+            {
+              '@context': 'https://schema.org',
+              '@type': 'BreadcrumbList',
+              itemListElement: [
+                { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+                { '@type': 'ListItem', position: 2, name: 'All Tools', item: `${SITE_URL}/tools` },
+                {
+                  '@type': 'ListItem',
+                  position: 3,
+                  name: tool.value.name,
+                  item: `${SITE_URL}/tools/${tool.value.slug}`,
+                },
+              ],
+            },
+          ]
+        : undefined,
+  })
 
   const crumbs = computed<BreadcrumbItem[]>(() => [
     { label: 'Home', to: { name: ROUTE_NAMES.HOME } },

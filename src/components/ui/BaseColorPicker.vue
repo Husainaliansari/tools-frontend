@@ -18,6 +18,7 @@ const props = withDefaults(
     label?: string
     showOpacity?: boolean
     presets?: readonly string[]
+    swatchOnly?: boolean
   }>(),
   {
     opacity: 1,
@@ -28,6 +29,7 @@ const props = withDefaults(
       '#dc2626', '#ea580c', '#f59e0b', '#16a34a', '#0d9488', '#2563eb',
       '#4f46e5', '#7c3aed', '#c026d3', '#db2777',
     ],
+    swatchOnly: false,
   },
 )
 
@@ -48,7 +50,7 @@ const recentColors = ref<string[]>([])
 
 function loadRecentColors(): void {
   try {
-    const stored = localStorage.getItem(RECENT_KEY)
+    const stored = globalThis.localStorage.getItem(RECENT_KEY)
     if (stored) recentColors.value = JSON.parse(stored)
   } catch {
     recentColors.value = ['#1f2937', '#dc2626', '#2563eb', '#16a34a', '#7c3aed']
@@ -61,7 +63,7 @@ function addRecentColor(color: string): void {
   list.unshift(norm)
   recentColors.value = list.slice(0, 10)
   try {
-    localStorage.setItem(RECENT_KEY, JSON.stringify(recentColors.value))
+    globalThis.localStorage.setItem(RECENT_KEY, JSON.stringify(recentColors.value))
   } catch {
     // ignore storage errors
   }
@@ -74,12 +76,12 @@ function updatePosition(): void {
   let top = rect.bottom + 6
   let left = rect.left
 
-  if (left + popoverWidth > window.innerWidth - 12) {
-    left = Math.max(12, window.innerWidth - popoverWidth - 12)
+  if (left + popoverWidth > globalThis.innerWidth - 12) {
+    left = Math.max(12, globalThis.innerWidth - popoverWidth - 12)
   }
 
   const popoverHeight = popoverEl.value?.offsetHeight || 340
-  if (top + popoverHeight > window.innerHeight - 12 && rect.top - popoverHeight > 12) {
+  if (top + popoverHeight > globalThis.innerHeight - 12 && rect.top - popoverHeight > 12) {
     top = rect.top - popoverHeight - 6
   }
 
@@ -125,15 +127,15 @@ watch(isOpen, (newVal) => {
 
 onMounted(() => {
   loadRecentColors()
-  document.addEventListener('pointerdown', handleClickOutside, true)
-  window.addEventListener('scroll', handleScrollOrResize, true)
-  window.addEventListener('resize', handleScrollOrResize)
+  globalThis.document.addEventListener('pointerdown', handleClickOutside, true)
+  globalThis.addEventListener('scroll', handleScrollOrResize, true)
+  globalThis.addEventListener('resize', handleScrollOrResize)
 })
 
 onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', handleClickOutside, true)
-  window.removeEventListener('scroll', handleScrollOrResize, true)
-  window.removeEventListener('resize', handleScrollOrResize)
+  globalThis.document.removeEventListener('pointerdown', handleClickOutside, true)
+  globalThis.removeEventListener('scroll', handleScrollOrResize, true)
+  globalThis.removeEventListener('resize', handleScrollOrResize)
 })
 
   // ─── Color Parsing & Conversion ──────────────────────────────────────────
@@ -217,12 +219,13 @@ onBeforeUnmount(() => {
   }
 
   const normalizedHex = computed(() => {
-    let hex = props.modelValue.trim()
+    let hex = (props.modelValue ?? '').trim()
+    if (!hex) hex = '#000000'
     if (!hex.startsWith('#')) hex = `#${hex}`
     return hex.toLowerCase()
   })
 
-  const currentRgb = computed(() => parseToRgb(props.modelValue))
+  const currentRgb = computed(() => parseToRgb(normalizedHex.value))
   const currentHsl = computed(() => {
     const { r, g, b } = currentRgb.value
     return rgbToHsl(r, g, b)
@@ -275,16 +278,18 @@ onBeforeUnmount(() => {
     <button
       type="button"
       class="pf-color-picker__trigger"
+      :class="{ 'pf-color-picker__trigger--swatch-only': swatchOnly }"
       :aria-label="label"
       :title="`${label}: ${normalizedHex}`"
       @click="toggleOpen"
     >
       <span
         class="pf-color-picker__swatch"
+        :class="{ 'pf-color-picker__swatch--rect': swatchOnly }"
         :style="{ background: normalizedHex, opacity: opacity ?? 1 }"
       />
-      <span class="pf-color-picker__hex">{{ normalizedHex }}</span>
-      <span v-if="showOpacity" class="pf-color-picker__op-badge">{{ opacityPct }}%</span>
+      <span v-if="!swatchOnly" class="pf-color-picker__hex">{{ normalizedHex }}</span>
+      <span v-if="showOpacity && !swatchOnly" class="pf-color-picker__op-badge">{{ opacityPct }}%</span>
       <BaseIcon name="chevron-down" :size="12" class="pf-color-picker__arrow" />
     </button>
 
@@ -695,5 +700,16 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
+  }
+
+  .pf-color-picker__trigger--swatch-only {
+    padding: 0 4px;
+    height: 26px;
+    gap: 4px;
+  }
+  .pf-color-picker__swatch--rect {
+    border-radius: var(--radius-sm) !important;
+    width: 18px !important;
+    height: 18px !important;
   }
 </style>

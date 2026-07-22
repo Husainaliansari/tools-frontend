@@ -7,7 +7,13 @@
   import SegmentedControl from '@components/ui/SegmentedControl.vue'
   import FaqItem from '@components/ui/FaqItem.vue'
   import { GENERAL_FAQS, PRICING_PLANS, ROUTE_NAMES } from '@constants'
-  import { useFeedback } from '@composables'
+  import { useFeedback, usePageMeta } from '@composables'
+
+  usePageMeta({
+    title: 'Pricing — PDFly',
+    description:
+      'Simple, transparent PDFly pricing. Start free with generous limits, or upgrade to Pro for larger files, unlimited tasks and batch processing. Enterprise plans available.',
+  })
 
   const router = useRouter()
   const { showToast } = useFeedback()

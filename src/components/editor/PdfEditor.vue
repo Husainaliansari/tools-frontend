@@ -12,8 +12,10 @@
   import PropertiesBar from './PropertiesBar.vue'
   import LeftPanel from './LeftPanel.vue'
   import PageStage from './PageStage.vue'
+  import PropertiesSidebar from './PropertiesSidebar.vue'
   import MetadataModal from './MetadataModal.vue'
   import SignatureModal from './SignatureModal.vue'
+  import FindReplaceModal from './FindReplaceModal.vue'
   import { provideEditor, ZOOM_PRESETS } from './useEditor'
   import type { EditorAction } from './editor-tools'
   import type { ToolId } from '@/lib/pdf'
@@ -25,7 +27,13 @@
   const { showToast } = useFeedback()
   const showMeta = ref(false)
   const showSignature = ref(false)
+  const showFindReplace = ref(false)
   const busy = ref(false)
+  const noteDismissed = ref(globalThis.sessionStorage.getItem('pdf_editor_content_note_dismissed') === 'true')
+  function dismissNote(): void {
+    noteDismissed.value = true
+    globalThis.sessionStorage.setItem('pdf_editor_content_note_dismissed', 'true')
+  }
   const rootEl = ref<HTMLDivElement | null>(null)
   const imageInput = ref<HTMLInputElement | null>(null)
   const isFullscreen = ref(false)
@@ -117,10 +125,16 @@
       case 'metadata':
         showMeta.value = true
         return
+      case 'find-replace':
       case 'search':
-        editor.leftOpen.value = true
-        editor.leftTab.value = 'search'
+        showFindReplace.value = true
         return
+      case 'format-painter':
+        return editor.toggleFormatPainter()
+      case 'clear-formatting':
+        return editor.clearFormatting()
+      case 'cut':
+        return editor.cutSelection()
       case 'signature':
         showSignature.value = true
         return
@@ -377,13 +391,48 @@
     return preset !== undefined ? String(preset) : ''
   })
 
+  const isMobile = ref(false)
+  function handleResize(): void {
+    isMobile.value = globalThis.innerWidth <= 1024
+    if (isMobile.value) {
+      editor.leftOpen.value = false
+      editor.rightOpen.value = false
+    }
+  }
+
   onMounted(() => {
     globalThis.addEventListener('keydown', onKeyDown)
     globalThis.document.addEventListener('fullscreenchange', onFullscreenChange)
+
+    // Load preferred layout from sessionStorage
+    const leftPref = globalThis.sessionStorage.getItem('pdf-editor-left-open')
+    if (leftPref !== null) {
+      editor.leftOpen.value = leftPref === 'true'
+    }
+    const rightPref = globalThis.sessionStorage.getItem('pdf-editor-right-open')
+    if (rightPref !== null) {
+      editor.rightOpen.value = rightPref === 'true'
+    }
+
+    handleResize()
+    globalThis.addEventListener('resize', handleResize)
   })
+
   onBeforeUnmount(() => {
     globalThis.removeEventListener('keydown', onKeyDown)
     globalThis.document.removeEventListener('fullscreenchange', onFullscreenChange)
+    globalThis.removeEventListener('resize', handleResize)
+  })
+
+  watch(() => editor.leftOpen.value, (val) => {
+    if (!isMobile.value) {
+      globalThis.sessionStorage.setItem('pdf-editor-left-open', String(val))
+    }
+  })
+  watch(() => editor.rightOpen.value, (val) => {
+    if (!isMobile.value) {
+      globalThis.sessionStorage.setItem('pdf-editor-right-open', String(val))
+    }
   })
 </script>
 
@@ -432,6 +481,15 @@
     <EditorRibbon @action="onAction" />
     <PropertiesBar />
 
+    <!-- Heads-up: editing reconstructed page content can lag on large files -->
+    <div v-if="editor.editMode.value !== 'none' && !noteDismissed" class="editor__note">
+      <BaseIcon name="info" :size="14" class="editor__note-icon" />
+      <span>Editing existing page content — changes to font, size, or colour may take a moment to render on large documents.</span>
+      <button type="button" class="editor__note-dismiss" title="Dismiss" @click="dismissNote">
+        <BaseIcon name="x" :size="13" />
+      </button>
+    </div>
+
     <!-- Autosave recovery -->
     <div v-if="editor.autosaveAvailable.value" class="editor__restore">
       <BaseIcon name="clock" :size="14" />
@@ -463,6 +521,7 @@
     <div class="editor__body">
       <LeftPanel />
       <PageStage />
+      <PropertiesSidebar v-if="editor.rightOpen.value" />
     </div>
 
     <!-- Status / navigation bar -->
@@ -546,11 +605,22 @@
         <button type="button" class="editor__sbtn" title="Zoom in (Ctrl+=)" @click="editor.zoomIn()">
           <BaseIcon name="zoom-in" :size="16" />
         </button>
+        <span class="editor__sep" />
+        <button
+          type="button"
+          class="editor__sbtn"
+          :class="{ 'editor__sbtn--active': editor.rightOpen.value }"
+          title="Toggle properties panel"
+          @click="editor.rightOpen.value = !editor.rightOpen.value"
+        >
+          <BaseIcon name="panel-right" :size="16" />
+        </button>
       </div>
     </div>
 
     <MetadataModal v-if="showMeta" @close="showMeta = false" />
     <SignatureModal v-if="showSignature" @done="onSignatureDone" @close="showSignature = false" />
+    <FindReplaceModal v-if="showFindReplace" @close="showFindReplace = false" />
   </div>
 </template>
 
@@ -666,6 +736,40 @@
     display: flex;
     min-height: 0;
     position: relative;
+  }
+
+  .editor__note {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 14px;
+    background: hsl(var(--color-info) / 0.08);
+    border-bottom: 1px solid hsl(var(--color-info) / 0.2);
+    font-size: 12px;
+    font-weight: 500;
+    color: hsl(var(--color-text-muted));
+    flex: none;
+  }
+  .editor__note-icon {
+    color: hsl(var(--color-info));
+    flex: none;
+  }
+  .editor__note-dismiss {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    padding: 3px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: hsl(var(--color-text-muted));
+    cursor: pointer;
+    flex: none;
+  }
+  .editor__note-dismiss:hover {
+    background: hsl(var(--color-chip));
+    color: hsl(var(--color-text));
   }
 
   .editor__restore {

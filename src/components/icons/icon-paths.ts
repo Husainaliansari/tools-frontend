@@ -210,6 +210,34 @@ export const ICON_PATHS: Record<string, string> = {
     '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>',
   minimize:
     '<path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/>',
+  subscript:
+    '<path d="m4 5 8 8"/><path d="m12 5-8 8"/><path d="M20 19h-4c0-1.5 2-2.5 2-4s-2-1.5-2-1.5"/>',
+  superscript:
+    '<path d="m4 19 8-8"/><path d="m12 19-8-8"/><path d="M20 11h-4c0-1.5 2-2.5 2-4s-2-1.5-2-1.5"/>',
+  'format-painter':
+    '<path d="m19 11-8-8-8.5 8.5a2.12 2.12 0 0 0 0 3l2 2a2.12 2.12 0 0 0 3 0L16 8l3 3z"/><path d="m5 2 3 3"/><path d="M2 22l6-6"/>',
+  'clear-formatting':
+    '<path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/><path d="m15 15 6 6"/><path d="m21 15-6 6"/>',
+  'indent-increase':
+    '<line x1="3" x2="21" y1="6" y2="6"/><line x1="11" x2="21" y1="12" y2="12"/><line x1="11" x2="21" y1="18" y2="18"/><polyline points="3 10 7 12 3 14"/>',
+  'indent-decrease':
+    '<line x1="3" x2="21" y1="6" y2="6"/><line x1="11" x2="21" y1="12" y2="12"/><line x1="11" x2="21" y1="18" y2="18"/><polyline points="7 10 3 12 7 14"/>',
+  'text-transform':
+    '<path d="M3 7v-2h8v2"/><path d="M7 5v14"/><path d="M15 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0"/><path d="M21 9v10"/>',
+  'word-spacing':
+    '<path d="M4 12h16"/><path d="M4 8l-3 4 3 4"/><path d="M20 8l3 4-3 4"/>',
+  'line-height':
+    '<path d="M12 4v16"/><path d="M12 4l-3 3"/><path d="M12 4l3 3"/><path d="M12 20l-3-3"/><path d="M12 20l3-3"/><line x1="18" x2="22" y1="6" y2="6"/><line x1="18" x2="22" y1="12" y2="12"/><line x1="18" x2="22" y1="18" y2="18"/>',
+  'align-vert-top':
+    '<path d="M3 4h18"/><path d="M7 8v12"/><path d="M17 8v8"/>',
+  'align-vert-middle':
+    '<path d="M3 12h18"/><path d="M7 6v12"/><path d="M17 8v8"/>',
+  'align-vert-bottom':
+    '<path d="M3 20h18"/><path d="M7 4v12"/><path d="M17 8v8"/>',
+  'find-replace':
+    '<circle cx="10" cy="10" r="6"/><path d="m14.5 14.5 4.5 4.5"/><path d="M18 6h4"/><path d="M20 4v4"/>',
+  pin:
+    '<line x1="12" x2="12" y1="17" y2="22"/><path d="M5 17h14l-1.5-5H6.5Z"/><path d="M9 12V4h6v8"/>',
 }
 
 export type IconName = keyof typeof ICON_PATHS

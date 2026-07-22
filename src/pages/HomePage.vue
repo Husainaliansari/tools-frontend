@@ -22,8 +22,39 @@
     getPopularTools,
     getToolsByCategory,
     searchTools,
+    SITE_NAME,
+    SITE_URL,
   } from '@constants'
   import { hexAlpha } from '@utils'
+  import { usePageMeta } from '@composables'
+
+  usePageMeta({
+    title: 'PDFly — Every tool you need to work with PDFs',
+    description:
+      'PDFly is a free, secure suite of 30+ online PDF tools. Compress, convert, merge, split, edit, sign and protect PDFs right in your browser — no installs, files auto-deleted.',
+    canonical: '/',
+    structuredData: () => [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: SITE_NAME,
+        url: SITE_URL,
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: `${SITE_URL}/tools?q={search_term_string}`,
+          'query-input': 'required name=search_term_string',
+        },
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        name: SITE_NAME,
+        url: SITE_URL,
+        description:
+          'A free, secure suite of online PDF tools that run in your browser.',
+      },
+    ],
+  })
 
   const router = useRouter()
   const query = ref('')

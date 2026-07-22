@@ -5,6 +5,13 @@
   import BaseCard from '@components/ui/BaseCard.vue'
   import BaseInput from '@components/ui/BaseInput.vue'
   import { HELP_CATEGORIES } from '@constants'
+  import { usePageMeta } from '@composables'
+
+  usePageMeta({
+    title: 'Help Center — PDFly',
+    description:
+      'Find help with PDFly. Browse guides on getting started, tools and features, billing, privacy, your account and troubleshooting.',
+  })
 
   const query = ref('')
 </script>

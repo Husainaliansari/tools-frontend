@@ -20,7 +20,7 @@ export const TOOLS: readonly PdfTool[] = [
     name: 'PDF Editor',
     category: 'Edit',
     icon: 'edit',
-    description: 'Add text, images, shapes and annotations to any PDF.',
+    description: 'Edit text, images, shapes, annotations, and PDF content with precision.',
     formats: ['PDF'],
     color: '#4f46e5',
     popular: true,

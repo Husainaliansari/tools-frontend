@@ -617,10 +617,16 @@
     sel?.removeAllRanges()
     sel?.addRange(range)
   }
-  function onTextInput(event: Event, id: string): void {
-    const el = event.target as HTMLElement
-    const text = el.innerText
-    const item = editor.annotations.value.find((a) => a.id === id)
+  // Coalesce text-box keystrokes into one rAF per frame: measuring height forces
+  // a synchronous reflow, so doing it once per frame (not once per keystroke)
+  // keeps typing smooth. Pending writes are flushed on blur.
+  let textRaf = 0
+  let pendingEl: HTMLElement | null = null
+  let pendingId: string | null = null
+  function commitPendingText(): void {
+    if (!pendingId || !pendingEl) return
+    const el = pendingEl
+    const item = editor.annotations.value.find((a) => a.id === pendingId)
     if (item && item.type === 'text') {
       const parent = el.parentElement
       const savedH = parent ? parent.style.height : ''
@@ -629,10 +635,28 @@
       if (parent) parent.style.height = savedH
       const minH = item.fontSize * (item.lineHeight || 1.25)
       const newH = Math.max(minH, measuredPx / (scale.value || 1))
-      editor.updateAnnotation(id, { text, h: newH }, { record: false })
+      editor.updateAnnotation(pendingId, { text: el.innerText, h: newH }, { record: false })
     } else {
-      editor.updateAnnotation(id, { text }, { record: false })
+      editor.updateAnnotation(pendingId, { text: el.innerText }, { record: false })
     }
+  }
+  function flushTextSync(): void {
+    if (textRaf) {
+      globalThis.cancelAnimationFrame(textRaf)
+      textRaf = 0
+    }
+    commitPendingText()
+    pendingEl = null
+    pendingId = null
+  }
+  function onTextInput(event: Event, id: string): void {
+    pendingEl = event.target as HTMLElement
+    pendingId = id
+    if (textRaf) return
+    textRaf = globalThis.requestAnimationFrame(() => {
+      textRaf = 0
+      commitPendingText()
+    })
   }
   /** Keep keystrokes inside the box; Escape / Ctrl+Enter commit by blurring. */
   function onEditKeydown(event: KeyboardEvent): void {
@@ -643,6 +667,7 @@
     }
   }
   function onTextBlur(id: string): void {
+    flushTextSync() // commit any keystrokes still queued for the next frame
     if (editingTextId.value === id) editingTextId.value = null
     const item = editor.pageAnnotations(props.page).find((a) => a.id === id)
     // Empty box: a freshly-created one is discarded silently; an existing one
@@ -855,7 +880,21 @@
         v-else-if="a.type === 'text'"
         class="ov__text"
         :class="{ 'ov__box--sel': selectedIds.includes(a.id), 'ov__text--editing': a.id === editingTextId }"
-        :style="{ ...boxStyle(a), fontSize: `${a.fontSize * scale}px`, color: a.color, textAlign: a.align }"
+        :style="{
+          ...boxStyle(a),
+          fontSize: `${a.fontSize * scale}px`,
+          fontFamily: a.fontFamily || 'inherit',
+          fontWeight: a.fontWeight || (a.bold ? 700 : 400),
+          fontStyle: a.fontStyle || (a.italic ? 'italic' : 'normal'),
+          textDecoration: [(a.underline ? 'underline' : ''), (a.strikethrough ? 'line-through' : '')].filter(Boolean).join(' ') || 'none',
+          backgroundColor: a.highlightColor || 'transparent',
+          lineHeight: String(a.lineHeight || 1.25),
+          letterSpacing: a.letterSpacing ? `${a.letterSpacing * scale}px` : 'normal',
+          wordSpacing: a.wordSpacing ? `${a.wordSpacing * scale}px` : 'normal',
+          textTransform: a.textTransform || 'none',
+          color: a.color,
+          textAlign: a.align,
+        }"
         @pointerdown="onItemPointerDown($event, a)"
         @dblclick="beginEditText(a)"
         @contextmenu="onItemContext($event, a)"

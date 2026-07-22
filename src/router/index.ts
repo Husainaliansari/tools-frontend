@@ -61,6 +61,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'FAQ — PDFly' },
       },
       {
+        path: 'feedback',
+        name: ROUTE_NAMES.FEEDBACK,
+        component: () => import('@pages/FeedbackPage.vue'),
+        meta: { title: 'Feedback & Suggestions — PDFly' },
+      },
+      {
         path: 'privacy',
         name: ROUTE_NAMES.PRIVACY,
         component: () => import('@pages/PrivacyPage.vue'),
@@ -71,6 +77,24 @@ const routes: RouteRecordRaw[] = [
         name: ROUTE_NAMES.TERMS,
         component: () => import('@pages/TermsPage.vue'),
         meta: { title: 'Terms & Conditions — PDFly' },
+      },
+      {
+        path: 'disclaimer',
+        name: ROUTE_NAMES.DISCLAIMER,
+        component: () => import('@pages/DisclaimerPage.vue'),
+        meta: { title: 'Disclaimer — PDFly' },
+      },
+      {
+        path: 'cookies',
+        name: ROUTE_NAMES.COOKIES,
+        component: () => import('@pages/CookiePolicyPage.vue'),
+        meta: { title: 'Cookie Policy — PDFly' },
+      },
+      {
+        path: 'sitemap',
+        name: ROUTE_NAMES.SITEMAP,
+        component: () => import('@pages/SitemapPage.vue'),
+        meta: { title: 'Sitemap — PDFly' },
       },
     ],
   },

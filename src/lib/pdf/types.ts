@@ -27,6 +27,7 @@ export type ToolId =
   | 'image'
   | 'stamp'
   | 'link'
+  | 'table'
   | 'field-text'
   | 'field-checkbox'
   | 'field-radio'
@@ -104,11 +105,28 @@ export interface TextAnnotation extends BaseAnnotation, Box {
   type: 'text'
   text: string
   fontSize: number
+  fontFamily?: string
   color: string
   align: 'left' | 'center' | 'right' | 'justify'
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+  strikethrough?: boolean
+  fontWeight?: number
+  fontStyle?: 'normal' | 'italic' | 'oblique'
+  highlightColor?: string | null
+  superscript?: boolean
+  subscript?: boolean
+  verticalAlign?: 'top' | 'middle' | 'bottom'
   lineHeight?: number
   letterSpacing?: number
+  wordSpacing?: number
   paragraphSpacing?: number
+  paragraphSpacingBefore?: number
+  paragraphSpacingAfter?: number
+  bulletStyle?: 'none' | 'disc' | 'decimal'
+  indentLevel?: number
+  textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'
   opacity?: number
 }
 
@@ -199,6 +217,7 @@ export interface ToolStyle {
   opacity: number
   fill: string | null
   fontSize: number
+  fontFamily?: string
   lineHeight?: number
   letterSpacing?: number
   paragraphSpacing?: number
@@ -210,6 +229,7 @@ export const DEFAULT_STYLE: ToolStyle = {
   opacity: 1,
   fill: null,
   fontSize: 16,
+  fontFamily: 'Calibri',
   lineHeight: 1.25,
   letterSpacing: 0,
   paragraphSpacing: 0,
@@ -266,9 +286,21 @@ export interface TextContentEdit extends ContentEditBase {
   italic: boolean
   underline?: boolean
   strikethrough?: boolean
+  fontWeight?: number
+  fontStyle?: 'normal' | 'italic' | 'oblique'
+  highlightColor?: string | null
+  superscript?: boolean
+  subscript?: boolean
+  verticalAlign?: 'top' | 'middle' | 'bottom'
   lineHeight?: number
   letterSpacing?: number
+  wordSpacing?: number
   paragraphSpacing?: number
+  paragraphSpacingBefore?: number
+  paragraphSpacingAfter?: number
+  bulletStyle?: 'none' | 'disc' | 'decimal'
+  indentLevel?: number
+  textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'
   /** Font ascent/descent as fractions of the em (from detection), for baseline reconstruction on export. */
   fontAscent?: number
   fontDescent?: number

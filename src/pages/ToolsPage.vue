@@ -8,6 +8,13 @@
   import ToolTile from '@components/tools/ToolTile.vue'
   import { TOOL_CATEGORIES, TOOL_COUNT, TOOLS } from '@constants'
   import type { ToolCategory } from '@types'
+  import { usePageMeta } from '@composables'
+
+  usePageMeta({
+    title: 'All PDF Tools — PDFly',
+    description:
+      'Browse the complete PDFly toolkit — 30+ free tools to compress, convert, merge, split, edit, sign, protect and OCR your PDF files, all in your browser.',
+  })
 
   const query = ref('')
   const activeCategory = ref<ToolCategory | 'All'>('All')
