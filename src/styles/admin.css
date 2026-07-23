@@ -1,0 +1,247 @@
+/**
+ * Admin panel theme tokens + primitives.
+ *
+ * The admin area is a self-contained visual system scoped under `.pf-admin`,
+ * faithfully reproducing the PDFly Admin design. It reads the app's existing
+ * dark-mode signal (`html.dark`) so the whole panel is theme-aware without
+ * touching the public site's tokens.
+ */
+
+.pf-admin {
+  /* light theme (default) */
+  --ad-bg: #f8fafc;
+  --ad-bg2: #ffffff;
+  --ad-surface: #ffffff;
+  --ad-surface2: #f1f5f9;
+  --ad-sidebar: #ffffff;
+  --ad-border: rgba(15, 23, 42, 0.08);
+  --ad-border-strong: rgba(15, 23, 42, 0.15);
+  --ad-text: #0f172a;
+  --ad-text2: #475569;
+  --ad-text3: #94a3b8;
+  --ad-primary: #2563eb;
+  --ad-primary-hover: #1d4ed8;
+  --ad-primary-bg: rgba(37, 99, 235, 0.08);
+  --ad-success: #16a34a;
+  --ad-warning: #d97706;
+  --ad-danger: #dc2626;
+  --ad-purple: #7c3aed;
+  --ad-cyan: #0891b2;
+  --ad-chip: rgba(15, 23, 42, 0.04);
+  --ad-card-hover: rgba(15, 23, 42, 0.02);
+  --ad-overlay: rgba(0, 0, 0, 0.5);
+  --ad-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
+  --ad-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --ad-input-bg: #ffffff;
+
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--ad-text);
+  background: var(--ad-bg);
+}
+
+html.dark .pf-admin {
+  --ad-bg: #09090b;
+  --ad-bg2: #0a0a0c;
+  --ad-surface: #18181b;
+  --ad-surface2: #27272a;
+  --ad-sidebar: #111113;
+  --ad-border: rgba(255, 255, 255, 0.08);
+  --ad-border-strong: rgba(255, 255, 255, 0.14);
+  --ad-text: #fafafa;
+  --ad-text2: #a1a1aa;
+  --ad-text3: #71717a;
+  --ad-primary: #3b82f6;
+  --ad-primary-hover: #2563eb;
+  --ad-primary-bg: rgba(59, 130, 246, 0.12);
+  --ad-success: #22c55e;
+  --ad-warning: #f59e0b;
+  --ad-danger: #ef4444;
+  --ad-purple: #8b5cf6;
+  --ad-cyan: #06b6d4;
+  --ad-chip: rgba(255, 255, 255, 0.06);
+  --ad-card-hover: rgba(255, 255, 255, 0.04);
+  --ad-overlay: rgba(0, 0, 0, 0.7);
+  --ad-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --ad-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --ad-input-bg: #18181b;
+}
+
+/* Shell layout */
+.pf-admin__shell {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background: var(--ad-bg);
+  color: var(--ad-text);
+}
+.pf-admin__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+.pf-admin__content {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+}
+
+/* Scrollbars inside the admin */
+.pf-admin *::-webkit-scrollbar { width: 8px; height: 8px; }
+.pf-admin *::-webkit-scrollbar-thumb {
+  background: rgba(120, 130, 150, 0.3);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.pf-admin *::-webkit-scrollbar-track { background: transparent; }
+
+/* Shared primitives */
+.ad-card {
+  background: var(--ad-surface);
+  border: 1px solid var(--ad-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.ad-h1 {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--ad-text);
+}
+.ad-sub { font-size: 13.5px; color: var(--ad-text3); margin: 4px 0 0; }
+.ad-muted { color: var(--ad-text3); }
+.ad-mono { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; }
+
+.ad-input {
+  width: 100%;
+  padding: 9px 14px;
+  background: var(--ad-input-bg);
+  border: 1px solid var(--ad-border);
+  border-radius: 8px;
+  color: var(--ad-text);
+  font-size: 13.5px;
+  outline: none;
+  transition: border 0.15s;
+}
+.ad-input:focus { border-color: var(--ad-primary); }
+.ad-input--icon { padding-left: 36px; }
+textarea.ad-input { resize: vertical; font-family: inherit; }
+select.ad-input { cursor: pointer; }
+.ad-label { font-size: 13px; font-weight: 600; color: var(--ad-text2); display: block; margin-bottom: 6px; }
+
+/* Table */
+.ad-table { width: 100%; border-collapse: collapse; }
+.ad-table th {
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ad-text3);
+  text-align: left;
+  border-bottom: 1px solid var(--ad-border);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ad-table td {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--ad-text2);
+  border-bottom: 1px solid var(--ad-border);
+  vertical-align: middle;
+}
+.ad-table tbody tr { transition: background 0.12s; }
+.ad-table tbody tr.is-clickable { cursor: pointer; }
+.ad-table tbody tr:hover { background: var(--ad-chip); }
+.ad-table tr:last-child td { border-bottom: none; }
+
+/* Animations */
+@keyframes adFadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes adFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes adSlideIn { from { opacity: 0; transform: translateX(340px); } to { opacity: 1; transform: none; } }
+@keyframes adPulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes adBarGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes adSpin { to { transform: rotate(360deg); } }
+
+.ad-fade-up { animation: adFadeUp 0.3s ease-out; }
+.ad-grid { display: grid; gap: 20px; }
+.ad-spinner {
+  width: 18px; height: 18px; border-radius: 999px;
+  border: 2px solid var(--ad-border-strong);
+  border-top-color: var(--ad-primary);
+  animation: adSpin 0.7s linear infinite;
+}
+
+/* Topbar Menu Toggle (desktop hidden) */
+.ad-topbar__menu-toggle {
+  display: none;
+}
+
+/* Responsive CSS Overrides */
+@media (max-width: 768px) {
+  .ad-topbar__menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--ad-text2);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    transition: background 0.12s, color 0.12s;
+  }
+  .ad-topbar__menu-toggle:hover {
+    background: var(--ad-chip);
+    color: var(--ad-text);
+  }
+
+  .ad-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 1100;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease-in-out;
+  }
+  .ad-sidebar.is-mobile-open {
+    transform: translateX(0);
+  }
+  .ad-sidebar__backdrop {
+    position: fixed;
+    inset: 0;
+    background: var(--ad-overlay);
+    z-index: 1000;
+    animation: adFadeIn 0.2s ease-out;
+  }
+
+  .pf-admin__content {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .ad-topbar__crumbs {
+    display: none;
+  }
+}
+
+@media (max-width: 500px) {
+  .ad-topbar__search span,
+  .ad-topbar__search .ad-topbar__kbd {
+    display: none;
+  }
+  .ad-topbar__search {
+    min-width: 0;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 8px;
+  }
+}
+

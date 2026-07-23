@@ -37,9 +37,8 @@
 <style scoped>
   .pf-toast-wrap {
     position: fixed;
-    bottom: 26px;
-    left: 50%;
-    transform: translateX(-50%);
+    top: 24px;
+    right: 24px;
     z-index: var(--z-toast);
   }
   .pf-toast {
@@ -63,12 +62,23 @@
     font-size: 14px;
   }
   .toast-enter-active {
-    animation: toastIn 0.3s ease;
+    animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .toast-leave-active {
-    transition: opacity 0.2s ease;
+    transition: opacity 0.2s ease, transform 0.2s ease;
   }
   .toast-leave-to {
     opacity: 0;
+    transform: translateX(16px);
+  }
+  @keyframes toastSlideIn {
+    from {
+      opacity: 0;
+      transform: translateX(32px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
   }
 </style>

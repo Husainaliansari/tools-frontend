@@ -6,3 +6,4 @@ export {
   type FeedbackResult,
   type FeedbackSubmission,
 } from './feedback.service'
+export { adminService } from './admin'

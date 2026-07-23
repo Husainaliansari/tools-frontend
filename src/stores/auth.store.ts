@@ -19,6 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!user.value && !!accessToken.value)
   const currentUser = computed(() => user.value)
   const userPlan = computed(() => user.value?.plan ?? 'free')
+  const isAdmin = computed(() => !!user.value?.is_admin)
 
   // ─── Actions ──────────────────────────────────────────────────────────────
 
@@ -157,6 +158,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     currentUser,
     userPlan,
+    isAdmin,
     // Actions
     initialize,
     login,

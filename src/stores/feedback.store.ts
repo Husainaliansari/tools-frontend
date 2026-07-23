@@ -28,20 +28,33 @@ export const useFeedbackStore = defineStore('feedback', () => {
 
   // ─── Confirm dialog ─────────────────────────────────────────────────────
   const confirmState = ref<ConfirmOptions | null>(null)
+  // Resolver for the promise handed back to the caller, so `await confirm(...)`
+  // reflects the user's choice. Backward compatible: callers that ignore the
+  // return value still get the dialog + follow-up toast exactly as before.
+  let confirmResolver: ((accepted: boolean) => void) | null = null
 
-  function confirm(options: ConfirmOptions): void {
+  function confirm(options: ConfirmOptions): Promise<boolean> {
+    // Resolve any dialog already open (superseded) as declined.
+    confirmResolver?.(false)
     confirmState.value = options
+    return new Promise<boolean>((resolve) => {
+      confirmResolver = resolve
+    })
   }
 
   /** Accepts the dialog; surfaces the follow-up toast if one was configured. */
   function acceptConfirm(): void {
     const toastMessage = confirmState.value?.toast
     confirmState.value = null
+    confirmResolver?.(true)
+    confirmResolver = null
     if (toastMessage) showToast(toastMessage)
   }
 
   function cancelConfirm(): void {
     confirmState.value = null
+    confirmResolver?.(false)
+    confirmResolver = null
   }
 
   return {

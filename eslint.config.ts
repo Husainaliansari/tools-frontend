@@ -6,7 +6,7 @@ import eslintConfigPrettier from 'eslint-config-prettier'
 export default tseslint.config(
   // Global ignores
   {
-    ignores: ['dist/**', 'node_modules/**', '.vscode/**', 'coverage/**'],
+    ignores: ['dist/**', 'node_modules/**', '.vscode/**', 'coverage/**', 'vite.config.ts', 'eslint.config.ts'],
   },
 
   // Base JS recommended
@@ -23,6 +23,33 @@ export default tseslint.config(
   {
     files: ['**/*.vue', '**/*.ts', '**/*.tsx'],
     languageOptions: {
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        localStorage: 'readonly',
+        sessionStorage: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        FormData: 'readonly',
+        Blob: 'readonly',
+        File: 'readonly',
+        Headers: 'readonly',
+        Request: 'readonly',
+        Response: 'readonly',
+        WebSocket: 'readonly',
+        HTMLElement: 'readonly',
+        Event: 'readonly',
+        CustomEvent: 'readonly',
+        KeyboardEvent: 'readonly',
+        MouseEvent: 'readonly',
+      },
       parserOptions: {
         parser: tseslint.parser,
         project: ['./tsconfig.app.json'],

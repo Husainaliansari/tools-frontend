@@ -99,6 +99,10 @@ export interface User {
   email_verified_at: string | null
   avatar: string | null
   plan: SubscriptionPlan
+  /** Whether the account has admin-panel access (backend `is_admin`). */
+  is_admin?: boolean
+  /** Account moderation status (backend `status`). */
+  status?: string
   created_at: string
   updated_at: string
 }

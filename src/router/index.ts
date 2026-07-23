@@ -178,6 +178,38 @@ const routes: RouteRecordRaw[] = [
     ],
   },
 
+  // ── Admin panel (isolated tree; requires admin) ─────────────────────────────
+  {
+    path: '/admin',
+    component: () => import('@layouts/AdminLayout.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true },
+    children: [
+      { path: '', redirect: { name: ROUTE_NAMES.ADMIN_DASHBOARD } },
+      { path: 'dashboard', name: ROUTE_NAMES.ADMIN_DASHBOARD, component: () => import('@pages/admin/AdminDashboardPage.vue'), meta: { title: 'Dashboard — PDFly Admin' } },
+      { path: 'analytics', name: ROUTE_NAMES.ADMIN_ANALYTICS, component: () => import('@pages/admin/AdminAnalyticsPage.vue'), meta: { title: 'Analytics — PDFly Admin' } },
+      { path: 'users', name: ROUTE_NAMES.ADMIN_USERS, component: () => import('@pages/admin/AdminUsersPage.vue'), meta: { title: 'Users — PDFly Admin' } },
+      { path: 'subscribers', name: ROUTE_NAMES.ADMIN_SUBSCRIBERS, component: () => import('@pages/admin/AdminSubscribersPage.vue'), meta: { title: 'Subscribers — PDFly Admin' } },
+      { path: 'tools', name: ROUTE_NAMES.ADMIN_TOOLS, component: () => import('@pages/admin/AdminToolsPage.vue'), meta: { title: 'PDF Tools — PDFly Admin' } },
+      { path: 'files', name: ROUTE_NAMES.ADMIN_FILES, component: () => import('@pages/admin/AdminFilesPage.vue'), meta: { title: 'Files & Storage — PDFly Admin' } },
+      { path: 'jobs', name: ROUTE_NAMES.ADMIN_JOBS, component: () => import('@pages/admin/AdminJobsPage.vue'), meta: { title: 'Conversion Jobs — PDFly Admin' } },
+      { path: 'feedback', name: ROUTE_NAMES.ADMIN_FEEDBACK, component: () => import('@pages/admin/AdminFeedbackPage.vue'), meta: { title: 'Feedback — PDFly Admin' } },
+      { path: 'messages', name: ROUTE_NAMES.ADMIN_MESSAGES, component: () => import('@pages/admin/AdminMessagesPage.vue'), meta: { title: 'Messages — PDFly Admin' } },
+      { path: 'notifications', name: ROUTE_NAMES.ADMIN_NOTIFICATIONS, component: () => import('@pages/admin/AdminNotificationsPage.vue'), meta: { title: 'Notifications — PDFly Admin' } },
+      { path: 'announcements', name: ROUTE_NAMES.ADMIN_ANNOUNCEMENTS, component: () => import('@pages/admin/AdminAnnouncementsPage.vue'), meta: { title: 'Announcements — PDFly Admin' } },
+      { path: 'pages', name: ROUTE_NAMES.ADMIN_PAGES, component: () => import('@pages/admin/AdminPagesPage.vue'), meta: { title: 'Pages & Content — PDFly Admin' } },
+      { path: 'blog', name: ROUTE_NAMES.ADMIN_BLOG, component: () => import('@pages/admin/AdminBlogPage.vue'), meta: { title: 'Blog — PDFly Admin' } },
+      { path: 'seo', name: ROUTE_NAMES.ADMIN_SEO, component: () => import('@pages/admin/AdminSeoPage.vue'), meta: { title: 'SEO — PDFly Admin' } },
+      { path: 'faqs', name: ROUTE_NAMES.ADMIN_FAQS, component: () => import('@pages/admin/AdminFaqsPage.vue'), meta: { title: 'FAQs — PDFly Admin' } },
+      { path: 'branding', name: ROUTE_NAMES.ADMIN_BRANDING, component: () => import('@pages/admin/AdminBrandingPage.vue'), meta: { title: 'Theme & Branding — PDFly Admin' } },
+      { path: 'live', name: ROUTE_NAMES.ADMIN_LIVE, component: () => import('@pages/admin/AdminLivePage.vue'), meta: { title: 'Live Visitors — PDFly Admin' } },
+      { path: 'performance', name: ROUTE_NAMES.ADMIN_PERFORMANCE, component: () => import('@pages/admin/AdminPerformancePage.vue'), meta: { title: 'Server Performance — PDFly Admin' } },
+      { path: 'errors', name: ROUTE_NAMES.ADMIN_ERRORS, component: () => import('@pages/admin/AdminErrorsPage.vue'), meta: { title: 'Error Logs — PDFly Admin' } },
+      { path: 'audit', name: ROUTE_NAMES.ADMIN_AUDIT, component: () => import('@pages/admin/AdminAuditPage.vue'), meta: { title: 'Audit Logs — PDFly Admin' } },
+      { path: 'security', name: ROUTE_NAMES.ADMIN_SECURITY, component: () => import('@pages/admin/AdminSecurityPage.vue'), meta: { title: 'Security Events — PDFly Admin' } },
+      { path: 'settings/:tab?', name: ROUTE_NAMES.ADMIN_SETTINGS, component: () => import('@pages/admin/AdminSettingsPage.vue'), meta: { title: 'Settings — PDFly Admin' } },
+    ],
+  },
+
   // ── Catch-all 404 ──────────────────────────────────────────────────────────
   {
     path: '/:pathMatch(.*)*',
@@ -221,6 +253,12 @@ router.beforeEach(async (to) => {
   if (to.meta.requiresGuest && isAuthenticated) {
     return { name: ROUTE_NAMES.DASHBOARD }
   }
+
+  // Admin area is gated on the account's admin flag. Non-admins are bounced to
+  // the regular app dashboard rather than shown a forbidden shell.
+  if (to.meta.requiresAdmin && !authStore.isAdmin) {
+    return { name: ROUTE_NAMES.DASHBOARD }
+  }
 })
 
 // ─── Route meta type augmentation ────────────────────────────────────────────
@@ -230,6 +268,7 @@ declare module 'vue-router' {
     title?: string
     requiresAuth?: boolean
     requiresGuest?: boolean
+    requiresAdmin?: boolean
   }
 }
 

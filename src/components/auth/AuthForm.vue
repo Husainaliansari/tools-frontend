@@ -3,7 +3,7 @@
    * AuthForm — shared shell for the login / register / forgot / reset flows.
    * The `mode` prop selects which fields, social buttons and copy appear.
    */
-  import { computed, reactive } from 'vue'
+  import { computed, reactive, ref } from 'vue'
   import { useRouter, RouterLink } from 'vue-router'
   import BaseIcon from '@components/icons/BaseIcon.vue'
   import BaseButton from '@components/ui/BaseButton.vue'
@@ -56,16 +56,48 @@
     { label: 'Apple', icon: 'user' },
   ]
 
-  function submit() {
+  const submitting = ref(false)
+
+  async function submit() {
+    if (submitting.value) return
     if (props.mode === 'forgot') {
       showToast('Reset link sent to your email')
       return
     }
+    if (props.mode === 'reset') {
+      showToast('Password updated — you can now log in.')
+      router.push({ name: ROUTE_NAMES.LOGIN })
+      return
+    }
+
+    submitting.value = true
+    try {
+      if (props.mode === 'register') {
+        await authStore.register({
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          password_confirmation: form.confirmPassword || form.password,
+        })
+        showToast('Account created — welcome!')
+      } else {
+        await authStore.login({ email: form.email, password: form.password, remember: form.remember })
+        showToast('Signed in successfully')
+      }
+      // Admins land in the admin panel; everyone else in the app dashboard.
+      router.push({ name: authStore.isAdmin ? ROUTE_NAMES.ADMIN_DASHBOARD : ROUTE_NAMES.DASHBOARD })
+    } catch {
+      showToast(authStore.error ?? 'Authentication failed. Please try again.', 'error')
+    } finally {
+      submitting.value = false
+    }
+  }
+
+  // Explicit prototype affordance: explore the app without a real account.
+  function exploreDemo() {
     authStore.signInAsDemo()
-    const message =
-      props.mode === 'register' ? 'Account created — welcome!' : 'Signed in successfully'
     router.push({ name: ROUTE_NAMES.DASHBOARD })
-    showToast(message)
+    showToast('Signed in with a demo account')
   }
 </script>
 
@@ -81,7 +113,7 @@
           :key="s.label"
           type="button"
           class="pf-social-btn"
-          @click="submit"
+          @click="exploreDemo"
         >
           <BaseIcon :name="s.icon" :size="17" />
           {{ s.label }}
@@ -139,8 +171,17 @@
       </div>
 
       <div class="pf-auth-form__submit">
-        <BaseButton type="submit" full size="lg">{{ copy.submit }}</BaseButton>
+        <BaseButton type="submit" full size="lg" :loading="submitting">{{ copy.submit }}</BaseButton>
       </div>
+
+      <button
+        v-if="mode === 'login' || mode === 'register'"
+        type="button"
+        class="pf-auth-form__demo"
+        @click="exploreDemo"
+      >
+        Explore with a demo account
+      </button>
     </form>
 
     <div class="pf-auth-form__foot">
@@ -189,6 +230,23 @@
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
+  }
+  .pf-auth-form__demo {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 6px;
+    background: transparent;
+    border: none;
+    color: hsl(var(--color-text-muted));
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .pf-auth-form__demo:hover {
+    color: hsl(var(--color-text));
   }
   .pf-social-btn {
     flex: 1;
